@@ -1,0 +1,55 @@
+{
+  "packageName": "Netatmo (Connect) - Weather Station",
+  "author": "Derek Osborn",
+  "version": "1.1",
+  "minimumHEVersion": "2.0.0",
+  "dateReleased": "2020-10-30",
+  "apps": [
+    {
+      "id": "b243c804-679d-4a98-b1cb-57f356751591",
+      "name": "Netatmo (Connect)",
+      "namespace": "fuzzysb",
+      "location": "https://raw.githubusercontent.com/dJOS1475/Hubitat_Netatmo/main/Netatmo_Connect_Application.groovy",
+      "required": true,
+      "oauth": true,
+      "primary": false
+    }
+  ],
+  "drivers": [
+    {
+      "id": "72e5bac6-8948-4f14-acce-cde2040edde6",
+      "name": "Netatmo Basestation",
+      "namespace": "fuzzysb",
+      "location": "https://raw.githubusercontent.com/dJOS1475/Hubitat_Netatmo/main/Netatmo_BaseStation_Driver.groovy",
+      "required": true
+    },
+    {
+      "id": "2085304d-d20b-4ba1-8886-9d289836ca77",
+      "name": "Netatmo Additional Module",
+      "namespace": "fuzzysb",
+      "location": "https://raw.githubusercontent.com/dJOS1475/Hubitat_Netatmo/main/Netatmo_Additional_Module_Driver.groovy",
+      "required": true
+    },
+    {
+      "id": "1aeef374-a612-4fbf-9435-303e44d0e5e7",
+      "name": "Netatmo Outdoor Module",
+      "namespace": "fuzzysb",
+      "location": "https://raw.githubusercontent.com/dJOS1475/Hubitat_Netatmo/main/Netatmo_Outdoor_Module_Driver.groovy",
+      "required": true
+    },
+    {
+      "id": "f5fc22d7-9396-4f36-a218-27e86e5f3cf5",
+      "name": "Netatmo Rain",
+      "namespace": "fuzzysb",
+      "location": "https://raw.githubusercontent.com/dJOS1475/Hubitat_Netatmo/main/Netatmo_Rain_Driver.groovy",
+      "required": true
+    },
+    {
+      "id": "929d049b-3da3-475d-be6c-414de3257602",
+      "name": "Netatmo Wind",
+      "namespace": "fuzzysb",
+      "location": "https://raw.githubusercontent.com/dJOS1475/Hubitat_Netatmo/main/Netatmo_Wind_Driver.groovy",
+      "required": true
+    }
+  ]
+}
