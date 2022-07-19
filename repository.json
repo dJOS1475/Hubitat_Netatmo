@@ -3,7 +3,7 @@
 	"gitHubUrl": "https://github.com/dJOS1475",
 	"packages": [
 		{
-			"name": "Enhanced Weather Underground Driver",
+			"name": "Netatmo (Connect) - Weather Station",
 			"category": "Integrations",
 			"location": "https://raw.githubusercontent.com/dJOS1475/Hubitat_Netatmo/main/packageManifest.json",
 			"description": "Netatmo (Connect) - Weather Station",
