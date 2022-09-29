@@ -696,9 +696,9 @@ def poll() {
 				break;
 			case 'NAModule2':
 				log_debug "Updating Wind Module $data"
-				try { child?.sendEvent(name: 'WindAngle', value: data['WindAngle'], unit: "∞", displayed: false) } catch(e){}
+				try { child?.sendEvent(name: 'WindAngle', value: data['WindAngle'], unit: "°", displayed: false) } catch(e){}
 				try { child?.sendEvent(name: 'windDirection', value: data['WindAngle']) } catch(e){}
-				try { child?.sendEvent(name: 'GustAngle', value: data['GustAngle'], unit: "∞", displayed: false) } catch(e){}
+				try { child?.sendEvent(name: 'GustAngle', value: data['GustAngle'], unit: "°", displayed: false) } catch(e){}
 				try { child?.sendEvent(name: 'WindStrength', value: (windToPref(data['WindStrength'])).toDouble().trunc(1), unit: settings.windUnits) } catch(e){}
 				try { child?.sendEvent(name: 'windSpeed', value: (windToPref(data['WindStrength'])).toDouble().trunc(1), unit: settings.windUnits) } catch(e){}
 				try { child?.sendEvent(name: 'GustStrength', value: (windToPref(data['GustStrength'])).toDouble().trunc(1), unit: settings.windUnits) } catch(e){}
@@ -807,7 +807,7 @@ def angleToShortText(Angle) {
 	def sectorLabels = [ "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW", "N" ]
 	def Sector = ((((Angle + 11.25) > 360) ? (Angle - 348.75) : (Angle + 11.25)) / 22.5) as int
 	if(enableDebug == true){log.debug "angleToShortText: angle = ${Angle}  sector = ${Sector}  label = ${sectorLabels.get(Sector)}"}
-   	return Angle + "∞ " + sectorLabels.get(Sector)
+   	return Angle + "° " + sectorLabels.get(Sector)
 }
 
 def angleToOrdinal(WindAngle) {
@@ -834,45 +834,45 @@ def angleToOrdinal(WindAngle) {
 
 def windTotext(WindAngle) {
 	if(WindAngle < 23) { 
-		return WindAngle + "∞ North"
+		return WindAngle + "° North"
 	} else if (WindAngle < 68) {
-		return WindAngle + "∞ NorthEast"
+		return WindAngle + "° NorthEast"
 	} else if (WindAngle < 113) {
-		return WindAngle + "∞ East"
+		return WindAngle + "° East"
 	} else if (WindAngle < 158) {
-		return WindAngle + "∞ SouthEast"
+		return WindAngle + "° SouthEast"
 	} else if (WindAngle < 203) {
-		return WindAngle + "∞ South"
+		return WindAngle + "° South"
 	} else if (WindAngle < 248) {
-		return WindAngle + "∞ SouthWest"
+		return WindAngle + "° SouthWest"
 	} else if (WindAngle < 293) {
-		return WindAngle + "∞ West"
+		return WindAngle + "° West"
 	} else if (WindAngle < 338) {
-		return WindAngle + "∞ NorthWest"
+		return WindAngle + "° NorthWest"
 	} else if (WindAngle < 361) {
-		return WindAngle + "∞ North"
+		return WindAngle + "° North"
 	}
 }
 
 def gustTotext(GustAngle) {
 	if(GustAngle < 23) { 
-		return GustAngle + "∞ North"
+		return GustAngle + "° North"
 	} else if (GustAngle < 68) {
-		return GustAngle + "∞ NEast"
+		return GustAngle + "° NEast"
 	} else if (GustAngle < 113) {
-		return GustAngle + "∞ East"
+		return GustAngle + "° East"
 	} else if (GustAngle < 158) {
-		return GustAngle + "∞ SEast"
+		return GustAngle + "° SEast"
 	} else if (GustAngle < 203) {
-		return GustAngle + "∞ South"
+		return GustAngle + "° South"
 	} else if (GustAngle < 248) {
-		return GustAngle + "∞ SWest"
+		return GustAngle + "° SWest"
 	} else if (GustAngle < 293) {
-		return GustAngle + "∞ West"
+		return GustAngle + "° West"
 	} else if (GustAngle < 338) {
-		return GustAngle + "∞ NWest"
+		return GustAngle + "° NWest"
 	} else if (GustAngle < 361) {
-		return GustAngle + "∞ North"
+		return GustAngle + "° North"
 	}
 }
 
