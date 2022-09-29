@@ -1,4 +1,4 @@
-﻿/*
+/*
  *	Netatmo (Connect) Application
  *
  *	Enhancements for Hubitat by CybrMage - March 3, 2020
