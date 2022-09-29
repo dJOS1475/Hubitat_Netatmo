@@ -8,7 +8,7 @@
  *
  */
 
-def version() { return "cybr-030420" }
+def version() { return "v1.2" }
 
 metadata {
 	definition (name: "Netatmo Basestation", namespace: "fuzzysb", author: "Stuart Buchanan") {

@@ -8,7 +8,7 @@
  *
  */
 
-def version() { return "cybr-030320" }
+def version() { return "v1.2" }
 
 metadata {
 	definition (name: "Netatmo Rain", namespace: "fuzzysb", author: "Stuart Buchanan") {
