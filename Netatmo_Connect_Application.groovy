@@ -2,12 +2,17 @@
  *	Netatmo (Connect) Application
  *
  *	Enhancements for Hubitat by CybrMage - March 3, 2020
- *      Aestetic tweaks by dJOS - September 2020
- *	  Battery Status order changed + minor tweaks to summary tile aesthetic's
+ *  Now Maintained by dJOS as of 2022
+ *	  
  *
+ *  Last Update 29/09/2022
+ *
+ *	v1.2 - fixed Debug logging so it is only active when turned on in the app
+ *	v1.1 - Battery Status order changed + minor tweaks to summary tile aesthetic's
+ * 
  */
 
-def version() { return "cybr-030420" }
+def version() { return "v1.2" }
 
 import java.text.DecimalFormat
 import groovy.json.JsonSlurper
@@ -50,20 +55,20 @@ mappings {
 
 
 def authPage() {
-	log.debug "In authPage"
+	if(enableDebug == true){log.debug "In authPage"}
 
 	def description
 	def uninstallAllowed = false
 	def oauthTokenProvided = false
 
 	if (!state.accessToken) {
-		log.debug "About to create access token."
+		if(enableDebug == true){log.debug "About to create access token."}
 		state.accessToken = createAccessToken()
-		log.debug "Access token is : ${state.accessToken}"
+		if(enableDebug == true){log.debug "Access token is : ${state.accessToken}"}
 	}
 
 	def redirectUrl = getBuildRedirectUrl()
-	// log.debug "Redirect url = ${redirectUrl}"
+	if(enableDebug == true){log.debug "Redirect url = ${redirectUrl}"}
 
 	if (state.authToken) {
 		description = "Tap 'Next' to proceed"
@@ -74,7 +79,7 @@ def authPage() {
 	}
 
 	if (!oauthTokenProvided) {
-		log.debug "Showing the login page"
+		if(enableDebug == true){log.debug "Showing the login page"}
 		return dynamicPage(name: "Credentials", title: "Authorize Connection", nextPage:"listDevices", uninstall: uninstallAllowed, install:false) {
 			section("Enter Netatmo Application Details...") {
 				paragraph "you can get these details after creating a new application on https:\\developer.netatmo.com"
@@ -87,7 +92,7 @@ def authPage() {
 			}
 		}
 	} else {
-		log.debug "Showing the devices page"
+		if(enableDebug == true){log.debug "Showing the devices page"}
 		return dynamicPage(name: "Credentials", title: "Connected", nextPage:"listDevices", uninstall: uninstallAllowed, install:false) {
 			section() {
 				input(name:"Devices", style:"embedded", required:false, title:"Netatmo is now connected to Hubitat!", description:description) 
@@ -98,10 +103,10 @@ def authPage() {
 
 
 def oauthInitUrl() {
-	log.debug "In oauthInitUrl"
+	if(enableDebug == true){log.debug "In oauthInitUrl"}
 	a
 	state.oauthInitState = UUID.randomUUID().toString()
-	log.debug "oAuthInitStateIs: ${state.oauthInitState}"
+	if(enableDebug == true){log.debug "oAuthInitStateIs: ${state.oauthInitState}"}
 
 	
 	def oauthParams = [
@@ -124,30 +129,30 @@ def oauthInitUrl() {
 
 	def authRequest = authMethod.getAt(authMethod)
 	try{
-		log.debug "Executing 'SendCommand'"
+		if(enableDebug == true){log.debug "Executing 'SendCommand'"}
 		if (authMethod == "location"){
-			log.debug "Executing 'SendAuthRequest'"
+			if(enableDebug == true){log.debug "Executing 'SendAuthRequest'"}
 			httpGet(authRequest) { authResp ->
 				parseAuthResponse(authResp)
 			}
 		}
 	}
 	catch(Exception e){
-		log.debug("___exception: " + e)
+		if(enableDebug == true){log.debug("___exception: " + e)}
 	}
 
-	log.debug "REDIRECT URL: ${getApiUrl()}${getVendorAuthPath()}?${toQueryString(oauthParams)}"
+	if(enableDebug == true){log.debug "REDIRECT URL: ${getApiUrl()}${getVendorAuthPath()}?${toQueryString(oauthParams)}"}
 
 	return "${getApiUrl()}${getVendorAuthPath()}?${toQueryString(oauthParams)}"
 }
 
 private parseAuthResponse(resp) {
-	log.debug("Executing parseAuthResponse: "+resp.data)
-	log.debug("Output status: "+resp.status)
+	if(enableDebug == true){log.debug("Executing parseAuthResponse: "+resp.data)}
+	if(enableDebug == true){log.debug("Output status: "+resp.status)}
 }
 
 def callback() {
-	log.debug "callback()>> params: $params, params.code ${params.code}"
+	if(enableDebug == true){log.debug "callback()>> params: $params, params.code ${params.code}"}
 
 	def code = params.code
 	def oauthState = params.state
@@ -163,7 +168,7 @@ def callback() {
 			scope: "read_station"
 		]
 
-		log.debug "TOKEN URL: ${getVendorTokenPath() + toQueryString(tokenParams)}"
+		if(enableDebug == true){log.debug "TOKEN URL: ${getVendorTokenPath() + toQueryString(tokenParams)}"}
 
 		def tokenUrl = getVendorTokenPath()
 		def params = [
@@ -172,7 +177,7 @@ def callback() {
 			body: tokenParams
 		]
 
-		log.debug "PARAMS: ${params}"
+		if(enableDebug == true){log.debug "PARAMS: ${params}"}
 
 		httpPost(params) { resp ->
 
@@ -184,7 +189,7 @@ def callback() {
 				state.refreshToken = data.refresh_token
 				state.authToken = data.access_token
 				state.tokenExpires = now() + (data.expires_in * 1000)
-				// log.debug "swapped token: $resp.data"
+				if(enableDebug == true){log.debug "swapped token: $resp.data"}
 			}
 		}
 
@@ -201,7 +206,7 @@ def callback() {
 }
 
 def success() {
-	log.debug "OAuth flow succeeded"
+	if(enableDebug == true){log.debug "OAuth flow succeeded"}
 	def message = """
 	<p>We have located your """ + getVendorName() + """ account.</p>
 	<p>Close this page and install the application again. you will not be prompted for credentials next time.</p>
@@ -210,7 +215,7 @@ def success() {
 }
 
 def fail() {
-	log.debug "OAuth flow failed"
+	if(enableDebug == true){log.debug "OAuth flow failed"}
 	def message = """
 	<p>The connection could not be established!</p>
 	<p>Close this page and attempt install the application again.</p>
@@ -297,7 +302,7 @@ def connectionStatus(message, redirectUrl = null) {
 }
 
 def refreshToken() {
-	log.debug "In refreshToken"
+	if(enableDebug == true){log.debug "In refreshToken"}
 
 	def oauthParams = [
 		client_secret: getClientSecret(),
@@ -320,12 +325,12 @@ def refreshToken() {
 
 			response.data.each {key, value ->
 				def data = slurper.parseText(key);
-				// log.debug "Data: $data"
+				if(enableDebug == true){log.debug "Data: $data"}
 
 				state.refreshToken = data.refresh_token
 				state.accessToken = data.access_token
 				state.tokenExpires = now() + (data.expires_in * 1000)
-				log.debug "refreshToken: refreshed tokens"
+				if(enableDebug == true){log.debug "refreshToken: refreshed tokens"}
 				return true
 			}
 
@@ -339,7 +344,7 @@ def refreshToken() {
 		log.error "refreshToken: no access token"
 		return false
 	}
-	log.debug "refreshToken: completed"
+	if(enableDebug == true){log.debug "refreshToken: completed"}
 }
 
 String toQueryString(Map m) {
@@ -347,13 +352,13 @@ String toQueryString(Map m) {
 }
 
 def installed() {
-	log.debug "Installed with settings: ${settings}"
+	if(enableDebug == true){log.debug "Installed with settings: ${settings}"}
 
 	initialize()
 }
 
 def updated() {
-	log.debug "Updated with settings: ${settings}"
+	if(enableDebug == true){log.debug "Updated with settings: ${settings}"}
 
 	unsubscribe()
 	unschedule()
@@ -361,7 +366,7 @@ def updated() {
 }
 
 def initialize() {
-	log.debug "Initialized with settings: ${settings}"
+	if(enableDebug == true){log.debug "Initialized with settings: ${settings}"}
 
 	// Pull the latest device info into state
 	getDeviceList();
@@ -373,23 +378,23 @@ def initialize() {
 		try {
 			switch(detail?.type) {
 				case 'NAMain':
-					log.debug "Creating Base station, DeviceID: ${deviceId} Device name: ${detail.module_name}"
+					if(enableDebug == true){log.debug "Creating Base station, DeviceID: ${deviceId} Device name: ${detail.module_name}"}
 					createChildDevice("Netatmo Basestation", deviceId, "${detail.type}.${deviceId}", detail.module_name)
 					break
 				case 'NAModule1':
-					log.debug "Creating Outdoor module, DeviceID: ${deviceId} Device name: ${detail.module_name}"
+					if(enableDebug == true){log.debug "Creating Outdoor module, DeviceID: ${deviceId} Device name: ${detail.module_name}"}
 					createChildDevice("Netatmo Outdoor Module", deviceId, "${detail.type}.${deviceId}", detail.module_name)
 					break
 				case 'NAModule3':
-					log.debug "Creating Rain Gauge, DeviceID: ${deviceId} Device name: ${detail.module_name}"
+					if(enableDebug == true){log.debug "Creating Rain Gauge, DeviceID: ${deviceId} Device name: ${detail.module_name}"}
 					createChildDevice("Netatmo Rain", deviceId, "${detail.type}.${deviceId}", detail.module_name)
 					break
 				case 'NAModule4':
-					log.debug "Creating Additional module, DeviceID: ${deviceId} Device name: ${detail.module_name}"
+					if(enableDebug == true){log.debug "Creating Additional module, DeviceID: ${deviceId} Device name: ${detail.module_name}"}
 					createChildDevice("Netatmo Additional Module", deviceId, "${detail.type}.${deviceId}", detail.module_name)
 					break
 				case 'NAModule2':
-					log.debug "Creating Wind module, DeviceID: ${deviceId} Device name: ${detail.module_name}"
+					if(enableDebug == true){log.debug "Creating Wind module, DeviceID: ${deviceId} Device name: ${detail.module_name}"}
 					createChildDevice("Netatmo Wind", deviceId, "${detail.type}.${deviceId}", detail.module_name)
 					break
 			}
@@ -400,7 +405,7 @@ def initialize() {
 
 	// Cleanup any other devices that need to go away
 	def delete = getChildDevices().findAll { !settings.devices.contains(it.deviceNetworkId) }
-	log.debug "Delete: $delete"
+	if(enableDebug == true){log.debug "Delete: $delete"}
 	delete.each { deleteChildDevice(it.deviceNetworkId) }
 
 	// check if user has set location
@@ -412,7 +417,7 @@ def initialize() {
 }
 
 def uninstalled() {
-	log.debug "In uninstalled"
+	if(enableDebug == true){log.debug "In uninstalled"}
 
 	removeChildDevices(getChildDevices())
 }
@@ -500,9 +505,9 @@ def getDeviceList() {
 }
 
 private removeChildDevices(delete) {
-	log.debug "In removeChildDevices"
+	if(enableDebug == true){log.debug "In removeChildDevices"}
 
-	log.debug "deleting ${delete.size()} devices"
+	if(enableDebug == true){log.debug "deleting ${delete.size()} devices"}
 
 	delete.each {
 		deleteChildDevice(it.deviceNetworkId)
@@ -510,15 +515,15 @@ private removeChildDevices(delete) {
 }
 
 def createChildDevice(deviceFile, dni, name, label) {
-	log.debug "In createChildDevice"
+	if(enableDebug == true){log.debug "In createChildDevice"}
 
 	try {
 		def existingDevice = getChildDevice(dni)
 		if(!existingDevice) {
-			log.debug "Creating child"
+			if(enableDebug == true){log.debug "Creating child"}
 			def childDevice = addChildDevice("fuzzysb", deviceFile, dni, null, [name: name, label: label, completedSetup: true])
 		} else {
-			log.debug "Device $dni already exists"
+			if(enableDebug == true){log.debug "Device $dni already exists"}
 		}
 	} catch (e) {
 		log.error "Error creating device: ${e}"
@@ -526,7 +531,7 @@ def createChildDevice(deviceFile, dni, name, label) {
 }
 
 def listDevices() {
-	log.debug "Listing devices $devices "
+	if(enableDebug == true){log.debug "Listing devices $devices "}
 
 	def devices = getDeviceList()
 
@@ -560,7 +565,7 @@ def apiGet(String path, Map query, Closure callback) {
 		path: path,
 		'query': query
 	]
-	// log.debug "API Get: $params"
+	if(enableDebug == true){log.debug "API Get: $params"}
 
 	try {
 		httpGet(params)	{ response ->
@@ -570,7 +575,7 @@ def apiGet(String path, Map query, Closure callback) {
 		// This is most likely due to an invalid token. Try to refresh it and try again.
 		log.error "Netatmo::apiGet: Call failed $e"
 		if(refreshToken()) {
-			log.debug "Netatmo::apiGet: Trying again after refreshing token"
+			if(enableDebug == true){log.debug "Netatmo::apiGet: Trying again after refreshing token"}
 			httpGet(params)	{ response ->
 				callback.call(response)
 			}
@@ -592,7 +597,7 @@ def poll() {
 		def data = state?.deviceState[deviceId]
 		def child = children?.find { it.deviceNetworkId == deviceId }
 
-		//log.debug "Update: $child";
+		//if(enableDebug == true){log.debug "Update: $child";}
 		switch(detail?.type) {
 			case 'NAMain':
 				log_debug "Updating Basestation $data"
@@ -691,9 +696,9 @@ def poll() {
 				break;
 			case 'NAModule2':
 				log_debug "Updating Wind Module $data"
-				try { child?.sendEvent(name: 'WindAngle', value: data['WindAngle'], unit: "âˆž", displayed: false) } catch(e){}
+				try { child?.sendEvent(name: 'WindAngle', value: data['WindAngle'], unit: "°", displayed: false) } catch(e){}
 				try { child?.sendEvent(name: 'windDirection', value: data['WindAngle']) } catch(e){}
-				try { child?.sendEvent(name: 'GustAngle', value: data['GustAngle'], unit: "âˆž", displayed: false) } catch(e){}
+				try { child?.sendEvent(name: 'GustAngle', value: data['GustAngle'], unit: "°", displayed: false) } catch(e){}
 				try { child?.sendEvent(name: 'WindStrength', value: (windToPref(data['WindStrength'])).toDouble().trunc(1), unit: settings.windUnits) } catch(e){}
 				try { child?.sendEvent(name: 'windSpeed', value: (windToPref(data['WindStrength'])).toDouble().trunc(1), unit: settings.windUnits) } catch(e){}
 				try { child?.sendEvent(name: 'GustStrength', value: (windToPref(data['GustStrength'])).toDouble().trunc(1), unit: settings.windUnits) } catch(e){}
@@ -801,8 +806,8 @@ def lastUpdated(time) {
 def angleToShortText(Angle) {
 	def sectorLabels = [ "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW", "N" ]
 	def Sector = ((((Angle + 11.25) > 360) ? (Angle - 348.75) : (Angle + 11.25)) / 22.5) as int
-//	log.debug "angleToShortText: angle = ${Angle}  sector = ${Sector}  label = ${sectorLabels.get(Sector)}"
-   	return Angle + "Â° " + sectorLabels.get(Sector)
+	if(enableDebug == true){log.debug "angleToShortText: angle = ${Angle}  sector = ${Sector}  label = ${sectorLabels.get(Sector)}"}
+   	return Angle + "° " + sectorLabels.get(Sector)
 }
 
 def angleToOrdinal(WindAngle) {
@@ -829,45 +834,45 @@ def angleToOrdinal(WindAngle) {
 
 def windTotext(WindAngle) {
 	if(WindAngle < 23) { 
-		return WindAngle + "Â° North"
+		return WindAngle + "° North"
 	} else if (WindAngle < 68) {
-		return WindAngle + "Â° NorthEast"
+		return WindAngle + "° NorthEast"
 	} else if (WindAngle < 113) {
-		return WindAngle + "Â° East"
+		return WindAngle + "° East"
 	} else if (WindAngle < 158) {
-		return WindAngle + "Â° SouthEast"
+		return WindAngle + "° SouthEast"
 	} else if (WindAngle < 203) {
-		return WindAngle + "Â° South"
+		return WindAngle + "° South"
 	} else if (WindAngle < 248) {
-		return WindAngle + "Â° SouthWest"
+		return WindAngle + "° SouthWest"
 	} else if (WindAngle < 293) {
-		return WindAngle + "Â° West"
+		return WindAngle + "° West"
 	} else if (WindAngle < 338) {
-		return WindAngle + "Â° NorthWest"
+		return WindAngle + "° NorthWest"
 	} else if (WindAngle < 361) {
-		return WindAngle + "Â° North"
+		return WindAngle + "° North"
 	}
 }
 
 def gustTotext(GustAngle) {
 	if(GustAngle < 23) { 
-		return GustAngle + "Â° North"
+		return GustAngle + "° North"
 	} else if (GustAngle < 68) {
-		return GustAngle + "Â° NEast"
+		return GustAngle + "° NEast"
 	} else if (GustAngle < 113) {
-		return GustAngle + "Â° East"
+		return GustAngle + "° East"
 	} else if (GustAngle < 158) {
-		return GustAngle + "Â° SEast"
+		return GustAngle + "° SEast"
 	} else if (GustAngle < 203) {
-		return GustAngle + "Â° South"
+		return GustAngle + "° South"
 	} else if (GustAngle < 248) {
-		return GustAngle + "Â° SWest"
+		return GustAngle + "° SWest"
 	} else if (GustAngle < 293) {
-		return GustAngle + "Â° West"
+		return GustAngle + "° West"
 	} else if (GustAngle < 338) {
-		return GustAngle + "Â° NWest"
+		return GustAngle + "° NWest"
 	} else if (GustAngle < 361) {
-		return GustAngle + "Â° North"
+		return GustAngle + "° North"
 	}
 }
 
@@ -890,7 +895,7 @@ def debugEvent(message, displayEvent) {
 		descriptionText: message,
 		displayed: displayEvent
 	]
-	log.debug "Generating AppDebug Event: ${results}"
+	if(enableDebug == true){log.debug "Generating AppDebug Event: ${results}"}
 	sendEvent (results)
 }
 
