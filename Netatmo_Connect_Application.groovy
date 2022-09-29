@@ -12,7 +12,7 @@
  * 
  */
 
-def version() { return "v1.2" }
+def version() { return "cybr-030420" }
 
 import java.text.DecimalFormat
 import groovy.json.JsonSlurper

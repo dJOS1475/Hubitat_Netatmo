@@ -8,7 +8,7 @@
  *
  */
 
-def version() { return "v1.2" }
+def version() { return "cybr-030420" }
 
 metadata {
 	definition (name: "Netatmo Additional Module", namespace: "fuzzysb", author: "Stuart Buchanan") {
