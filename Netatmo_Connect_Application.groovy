@@ -7,6 +7,7 @@
  *
  *  Last Update 29/09/2022
  *
+ *	v1.3 - bug fixes
  *	v1.2 - fixed Debug logging so it is only active when turned on in the app
  *	v1.1 - Battery Status order changed + minor tweaks to summary tile aesthetic's
  * 
