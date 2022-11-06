@@ -5,8 +5,9 @@
  *  Now Maintained by dJOS as of 2022
  *	  
  *
- *  Last Update 29/09/2022
+ *  Last Update 07/11/2022
  *
+ *	v1.4 - Updated URL to https://dev.netatmo.com/
  *	v1.3 - bug fixes
  *	v1.2 - fixed Debug logging so it is only active when turned on in the app
  *	v1.1 - Battery Status order changed + minor tweaks to summary tile aesthetic's
@@ -83,7 +84,7 @@ def authPage() {
 		if(enableDebug == true){log.debug "Showing the login page"}
 		return dynamicPage(name: "Credentials", title: "Authorize Connection", nextPage:"listDevices", uninstall: uninstallAllowed, install:false) {
 			section("Enter Netatmo Application Details...") {
-				paragraph "you can get these details after creating a new application on https:\\developer.netatmo.com"
+				paragraph "you can get these details after creating a new application on https://dev.netatmo.com/"
 				input(name: 'clientId', title: 'Client ID', type: 'text', required: true)
 				input(name: 'clientSecret', title: 'Client secret (click away from this box before pressing the button below)', type: 'text', required: true, submitOnChange: true )
 			}
