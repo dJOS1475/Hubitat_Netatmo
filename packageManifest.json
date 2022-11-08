@@ -4,6 +4,8 @@
   "version": "1.4",
   "minimumHEVersion": "2.0.0",
   "dateReleased": "2022-09-29",
+  "releaseNotes": "Updated URL to https://dev.netatmo.com/",
+  "communityLink": "https://community.hubitat.com/t/re-release-netatmo-connect-weather-station/97788"
   "apps": [
     {
       "id": "b243c804-679d-4a98-b1cb-57f356751591",
