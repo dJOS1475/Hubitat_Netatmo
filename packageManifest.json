@@ -1,10 +1,10 @@
 {
   "packageName": "Netatmo (Connect) - Weather Station",
   "author": "Derek Osborn",
-  "version": "1.4",
+  "version": "1.5",
   "minimumHEVersion": "2.0.0",
-  "dateReleased": "2022-09-29",
-  "releaseNotes": "Updated URL to https://dev.netatmo.com/",
+  "dateReleased": "2024-10-01",
+  "releaseNotes": "Added a manual reauthorize option",
   "communityLink": "https://community.hubitat.com/t/re-release-netatmo-connect-weather-station/97788",
   "apps": [
     {
