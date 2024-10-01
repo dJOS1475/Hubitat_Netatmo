@@ -5,8 +5,9 @@
  *  Now Maintained by dJOS as of 2022
  *	  
  *
- *  Last Update 07/11/2022
+ *  Last Update 01/10/2024
  *
+ *	v1.5 - Added a manual reauthorize option
  *	v1.4 - Updated URL to https://dev.netatmo.com/
  *	v1.3 - bug fixes
  *	v1.2 - fixed Debug logging so it is only active when turned on in the app
@@ -98,6 +99,10 @@ def authPage() {
 		return dynamicPage(name: "Credentials", title: "Connected", nextPage:"listDevices", uninstall: uninstallAllowed, install:false) {
 			section() {
 				input(name:"Devices", style:"embedded", required:false, title:"Netatmo is now connected to Hubitat!", description:description) 
+			}
+			section() {
+				paragraph "If you are having issues, Tap below to log in to Netatmo and Re-authorize Hubitat access."
+				href url:oauthInitUrl(), external:true, required:false, title:"Connect to ${getVendorName()}:", description:description
 			}
 		}
 	}
