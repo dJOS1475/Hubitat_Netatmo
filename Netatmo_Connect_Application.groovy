@@ -40,6 +40,7 @@ definition(
 	name: "Netatmo (Connect)",
 	namespace: "dJOS",
 	author: "Derek Osborn",
+	importUrl: "https://raw.githubusercontent.com/dJOS1475/Hubitat_Netatmo/refs/heads/main/Netatmo_Connect_Application.groovy",
 	description: "Netatmo Integration",
 	category: "Weather",
 	iconUrl: "https://s3.amazonaws.com/smartapp-icons/Partner/netamo-icon-1.png",

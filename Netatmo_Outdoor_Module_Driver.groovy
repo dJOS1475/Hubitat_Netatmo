@@ -5,13 +5,14 @@
  *	Based on Brian Steere's original Code
  *
  *	Enhancements for Hubitat by CybrMage - March 3, 2020
+ *  Now Maintained by dJOS as of 2022
  *
  */
 
 def version() { return "v1.6" }
 
 metadata {
-	definition (name: "Netatmo Outdoor Module", namespace: "dJOS", author: "Derek Osborn") {
+	definition (name: "Netatmo Outdoor Module", namespace: "dJOS", author: "Derek Osborn"),importUrl: "https://raw.githubusercontent.com/dJOS1475/Hubitat_Netatmo/refs/heads/main/Netatmo_Outdoor_Module_Driver.groovy" {
 		capability "RelativeHumidityMeasurement"
 		capability "TemperatureMeasurement"
 		capability "Sensor"
