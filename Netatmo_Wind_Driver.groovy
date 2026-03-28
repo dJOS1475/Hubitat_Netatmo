@@ -8,10 +8,10 @@
  *
  */
 
-def version() { return "cybr-030420" }
+def version() { return "v1.6" }
 
 metadata {
-	definition (name: "Netatmo Wind", namespace: "fuzzysb", author: "Stuart Buchanan") {
+	definition (name: "Netatmo Wind", namespace: "dJOS", author: "Derek Osborn") {
 		capability "Sensor"
 		capability "Battery"
 		capability "Refresh"

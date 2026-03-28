@@ -8,15 +8,15 @@
  *
  */
 
-def version() { return "cybr-030420" }
+def version() { return "v1.6" }
 
 metadata {
-	definition (name: "Netatmo Additional Module", namespace: "fuzzysb", author: "Stuart Buchanan") {
+	definition (name: "Netatmo Additional Module", namespace: "dJOS", author: "Derek Osborn") {
 		capability "Sensor"
 		capability "Battery"
-		capability "Relative Humidity Measurement"
-		capability "Temperature Measurement"
-		capability "Carbon Dioxide Measurement"
+		capability "RelativeHumidityMeasurement"
+		capability "TemperatureMeasurement"
+		capability "CarbonDioxideMeasurement"
 		capability "Refresh"
 
 		attribute "min_temp", "number"

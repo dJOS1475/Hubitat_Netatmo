@@ -8,10 +8,10 @@
  *
  */
 
-def version() { return "cybr-030420" }
+def version() { return "v1.6" }
 
 metadata {
-	definition (name: "Netatmo Basestation", namespace: "fuzzysb", author: "Stuart Buchanan") {
+	definition (name: "Netatmo Basestation", namespace: "dJOS", author: "Derek Osborn") {
 		capability "RelativeHumidityMeasurement"
 		capability "TemperatureMeasurement"
 		capability "Sensor"
@@ -26,6 +26,7 @@ metadata {
 		attribute "temp_trend", "string"
 		attribute "pressure_trend", "string"
 		attribute "lastupdate", "string"
+		attribute "LastActivity", "string"
 
 		attribute "Summary", "string"
 		attribute "Overview", "string"
