@@ -12,7 +12,7 @@
 def version() { return "v1.6" }
 
 metadata {
-	definition (name: "Netatmo Wind", namespace: "dJOS", author: "Derek Osborn"), importUrl: "https://raw.githubusercontent.com/dJOS1475/Hubitat_Netatmo/refs/heads/main/Netatmo_Wind_Driver.groovy" {
+	definition (name: "Netatmo Wind", namespace: "dJOS", author: "Derek Osborn", importUrl: "https://raw.githubusercontent.com/dJOS1475/Hubitat_Netatmo/refs/heads/main/Netatmo_Wind_Driver.groovy") {
 		capability "Sensor"
 		capability "Battery"
 		capability "Refresh"
