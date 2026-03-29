@@ -5,18 +5,19 @@
  *	Based on Brian Steere's original Code
  *
  *	Enhancements for Hubitat by CybrMage - March 3, 2020
+ *  Now Maintained by dJOS as of 2022
  *
  */
 
-def version() { return "cybr-030420" }
+def version() { return "v1.6" }
 
 metadata {
-	definition (name: "Netatmo Additional Module", namespace: "fuzzysb", author: "Stuart Buchanan") {
+	definition (name: "Netatmo Additional Module", namespace: "dJOS", author: "Derek Osborn", importUrl: "https://raw.githubusercontent.com/dJOS1475/Hubitat_Netatmo/refs/heads/main/Netatmo_Additional_Module_Driver.groovy") {
 		capability "Sensor"
 		capability "Battery"
-		capability "Relative Humidity Measurement"
-		capability "Temperature Measurement"
-		capability "Carbon Dioxide Measurement"
+		capability "RelativeHumidityMeasurement"
+		capability "TemperatureMeasurement"
+		capability "CarbonDioxideMeasurement"
 		capability "Refresh"
 
 		attribute "min_temp", "number"

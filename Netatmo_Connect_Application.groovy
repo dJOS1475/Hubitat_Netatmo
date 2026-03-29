@@ -5,8 +5,9 @@
  *  Now Maintained by dJOS as of 2022
  *	  
  *
- *  Last Update 01/10/2024
+ *  Last Update 03/28/2025
  *
+ *	v1.6 - Bug fixes: OAuth token parsing, stray syntax error, capability names, namespace/author update
  *	v1.5 - Added a manual reauthorize option
  *	v1.4 - Updated URL to https://dev.netatmo.com/
  *	v1.3 - bug fixes
@@ -15,7 +16,7 @@
  * 
  */
 
-def version() { return "cybr-030420" }
+def version() { return "v1.6" }
 
 import java.text.DecimalFormat
 import groovy.json.JsonSlurper
@@ -37,8 +38,9 @@ private getServerUrl() 		{ return getFullApiServerUrl() }
 // Automatically generated. Make future change here.
 definition(
 	name: "Netatmo (Connect)",
-	namespace: "fuzzysb",
-	author: "Stuart Buchanan",
+	namespace: "dJOS",
+	author: "Derek Osborn",
+	importUrl: "https://raw.githubusercontent.com/dJOS1475/Hubitat_Netatmo/refs/heads/main/Netatmo_Connect_Application.groovy",
 	description: "Netatmo Integration",
 	category: "Weather",
 	iconUrl: "https://s3.amazonaws.com/smartapp-icons/Partner/netamo-icon-1.png",
@@ -111,11 +113,9 @@ def authPage() {
 
 def oauthInitUrl() {
 	if(enableDebug == true){log.debug "In oauthInitUrl"}
-	a
 	state.oauthInitState = UUID.randomUUID().toString()
 	if(enableDebug == true){log.debug "oAuthInitStateIs: ${state.oauthInitState}"}
 
-	
 	def oauthParams = [
 		response_type: "code",
 		client_id: getClientId(),
@@ -216,7 +216,7 @@ def success() {
 	if(enableDebug == true){log.debug "OAuth flow succeeded"}
 	def message = """
 	<p>We have located your """ + getVendorName() + """ account.</p>
-	<p>Close this page and install the application again. you will not be prompted for credentials next time.</p>
+	<p>Close this page and return to the Hubitat app to select your devices.</p>
 	"""
 	connectionStatus(message)
 }
@@ -225,7 +225,7 @@ def fail() {
 	if(enableDebug == true){log.debug "OAuth flow failed"}
 	def message = """
 	<p>The connection could not be established!</p>
-	<p>Close this page and attempt install the application again.</p>
+	<p>Close this page and try connecting again from the Hubitat app.</p>
 	"""
 	connectionStatus(message)
 }
@@ -285,11 +285,6 @@ def connectionStatus(message, redirectUrl = null) {
 				color: #666666;
 				margin-bottom: 0;
 			}
-			/*
-			p:last-child {
-				margin-top: 0px;
-			}
-			*/
 			span {
 				font-family: 'Swiss 721 W01 Light';
 				}
@@ -528,7 +523,7 @@ def createChildDevice(deviceFile, dni, name, label) {
 		def existingDevice = getChildDevice(dni)
 		if(!existingDevice) {
 			if(enableDebug == true){log.debug "Creating child"}
-			def childDevice = addChildDevice("fuzzysb", deviceFile, dni, null, [name: name, label: label, completedSetup: true])
+			def childDevice = addChildDevice("dJOS", deviceFile, dni, null, [name: name, label: label, completedSetup: true])
 		} else {
 			if(enableDebug == true){log.debug "Device $dni already exists"}
 		}
@@ -609,6 +604,7 @@ def poll() {
 			case 'NAMain':
 				log_debug "Updating Basestation $data"
 				try { child?.sendEvent(name: 'lastupdate', value: lastUpdated(data['time_utc']), unit: "") } catch (e){}
+			try { child?.sendEvent(name: 'LastActivity', value: lastUpdated(data['time_utc']), unit: "") } catch (e){}
 				try { child?.sendEvent(name: 'temperature', value: cToPref(data['Temperature']) as float, unit: getTemperatureScale()) } catch (e){}
 				try { child?.sendEvent(name: 'carbonDioxide', value: data['CO2'], unit: "ppm") } catch (e){}
 				try { child?.sendEvent(name: 'humidity', value: data['Humidity'], unit: "%") } catch (e){}
@@ -795,7 +791,7 @@ def windToPrefUnits(Wind) {
 
 def lastUpdated(time) {
 	if(location.timeZone == null) {
-		log.warn "Time Zone is not set, time will be in UTC. Go to your ST app and set your hub location to get local time!"
+		log.warn "Time Zone is not set, time will be in UTC. Go to your Hubitat app and set your hub location to get local time!"
 		def updtTime = new Date(time*1000L).format("HH:mm")
 		state.lastUpdated = updtTime
 		return updtTime + " UTC"   
@@ -893,7 +889,7 @@ def noiseTosound(Noise) {
 
 def checkloc() {
 	if(location.timeZone == null)
-		sendPush("Netatmo: Time Zone is not set, time will be in UTC. Go to your ST app and set your hub location to get local time!")
+		sendPush("Netatmo: Time Zone is not set, time will be in UTC. Go to your Hubitat app and set your hub location to get local time!")
 }
 
 def debugEvent(message, displayEvent) {
