@@ -1,7 +1,7 @@
 {
   "packageName": "Netatmo (Connect) - Weather Station",
   "author": "Derek Osborn",
-  "version": "1.5",
+  "version": "1.6",
   "minimumHEVersion": "2.0.0",
   "dateReleased": "2024-10-01",
   "releaseNotes": "v1.6 - Bug fixes: OAuth token parsing, stray syntax error, capability names, namespace/author update",
