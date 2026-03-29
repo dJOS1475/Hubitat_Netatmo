@@ -5,9 +5,8 @@
  *  Now Maintained by dJOS as of 2022
  *	  
  *
- *  Last Update 03/28/2025
+ *  Last Update 01/10/2024
  *
- *	v1.6 - Bug fixes: OAuth token parsing, stray syntax error, capability names, namespace/author update
  *	v1.5 - Added a manual reauthorize option
  *	v1.4 - Updated URL to https://dev.netatmo.com/
  *	v1.3 - bug fixes
@@ -16,7 +15,7 @@
  * 
  */
 
-def version() { return "v1.6" }
+def version() { return "cybr-030420" }
 
 import java.text.DecimalFormat
 import groovy.json.JsonSlurper
@@ -38,9 +37,8 @@ private getServerUrl() 		{ return getFullApiServerUrl() }
 // Automatically generated. Make future change here.
 definition(
 	name: "Netatmo (Connect)",
-	namespace: "dJOS",
-	author: "Derek Osborn",
-	importUrl: "https://raw.githubusercontent.com/dJOS1475/Hubitat_Netatmo/refs/heads/main/Netatmo_Connect_Application.groovy",
+	namespace: "fuzzysb",
+	author: "Stuart Buchanan",
 	description: "Netatmo Integration",
 	category: "Weather",
 	iconUrl: "https://s3.amazonaws.com/smartapp-icons/Partner/netamo-icon-1.png",
@@ -113,9 +111,11 @@ def authPage() {
 
 def oauthInitUrl() {
 	if(enableDebug == true){log.debug "In oauthInitUrl"}
+	a
 	state.oauthInitState = UUID.randomUUID().toString()
 	if(enableDebug == true){log.debug "oAuthInitStateIs: ${state.oauthInitState}"}
 
+	
 	def oauthParams = [
 		response_type: "code",
 		client_id: getClientId(),
@@ -124,6 +124,29 @@ def oauthInitUrl() {
 		redirect_uri: getCallbackUrl(),
 		scope: "read_station"
 	]
+
+	def authMethod = [
+		'location': [
+			uri: getApiUrl(),
+			path: getVendorAuthPath(),
+			requestContentType: "application/json",
+			query: [toQueryString(oauthParams)]
+		]
+	]
+
+	def authRequest = authMethod.getAt(authMethod)
+	try{
+		if(enableDebug == true){log.debug "Executing 'SendCommand'"}
+		if (authMethod == "location"){
+			if(enableDebug == true){log.debug "Executing 'SendAuthRequest'"}
+			httpGet(authRequest) { authResp ->
+				parseAuthResponse(authResp)
+			}
+		}
+	}
+	catch(Exception e){
+		if(enableDebug == true){log.debug("___exception: " + e)}
+	}
 
 	if(enableDebug == true){log.debug "REDIRECT URL: ${getApiUrl()}${getVendorAuthPath()}?${toQueryString(oauthParams)}"}
 
@@ -164,11 +187,17 @@ def callback() {
 		if(enableDebug == true){log.debug "PARAMS: ${params}"}
 
 		httpPost(params) { resp ->
-			state.refreshToken = resp.data.refresh_token
-			state.authToken = resp.data.access_token
-			state.accessToken = resp.data.access_token
-			state.tokenExpires = now() + (resp.data.expires_in * 1000)
-			if(enableDebug == true){log.debug "swapped token: $resp.data"}
+
+			def slurper = new JsonSlurper()
+
+			resp.data.each { key, value ->
+				def data = slurper.parseText(key)
+
+				state.refreshToken = data.refresh_token
+				state.authToken = data.access_token
+				state.tokenExpires = now() + (data.expires_in * 1000)
+				if(enableDebug == true){log.debug "swapped token: $resp.data"}
+			}
 		}
 
 		// Handle success and failure here, and render stuff accordingly
@@ -299,13 +328,19 @@ def refreshToken() {
 	// OAuth Step 2: Request access token with our client Secret and OAuth "Code"
 	try {
 		httpPost(params) { response ->
-			if(enableDebug == true){log.debug "Data: $response.data"}
-			state.refreshToken = response.data.refresh_token
-			state.authToken = response.data.access_token
-			state.accessToken = response.data.access_token
-			state.tokenExpires = now() + (response.data.expires_in * 1000)
-			if(enableDebug == true){log.debug "refreshToken: refreshed tokens"}
-			return true
+			def slurper = new JsonSlurper();
+
+			response.data.each {key, value ->
+				def data = slurper.parseText(key);
+				if(enableDebug == true){log.debug "Data: $data"}
+
+				state.refreshToken = data.refresh_token
+				state.accessToken = data.access_token
+				state.tokenExpires = now() + (data.expires_in * 1000)
+				if(enableDebug == true){log.debug "refreshToken: refreshed tokens"}
+				return true
+			}
+
 		}
 	} catch (Exception e) {
 		log.error "refreshToken: Error: $e"
@@ -493,7 +528,7 @@ def createChildDevice(deviceFile, dni, name, label) {
 		def existingDevice = getChildDevice(dni)
 		if(!existingDevice) {
 			if(enableDebug == true){log.debug "Creating child"}
-			def childDevice = addChildDevice("dJOS", deviceFile, dni, null, [name: name, label: label, completedSetup: true])
+			def childDevice = addChildDevice("fuzzysb", deviceFile, dni, null, [name: name, label: label, completedSetup: true])
 		} else {
 			if(enableDebug == true){log.debug "Device $dni already exists"}
 		}
@@ -574,7 +609,6 @@ def poll() {
 			case 'NAMain':
 				log_debug "Updating Basestation $data"
 				try { child?.sendEvent(name: 'lastupdate', value: lastUpdated(data['time_utc']), unit: "") } catch (e){}
-			try { child?.sendEvent(name: 'LastActivity', value: lastUpdated(data['time_utc']), unit: "") } catch (e){}
 				try { child?.sendEvent(name: 'temperature', value: cToPref(data['Temperature']) as float, unit: getTemperatureScale()) } catch (e){}
 				try { child?.sendEvent(name: 'carbonDioxide', value: data['CO2'], unit: "ppm") } catch (e){}
 				try { child?.sendEvent(name: 'humidity', value: data['Humidity'], unit: "%") } catch (e){}
@@ -761,7 +795,7 @@ def windToPrefUnits(Wind) {
 
 def lastUpdated(time) {
 	if(location.timeZone == null) {
-		log.warn "Time Zone is not set, time will be in UTC. Go to your Hubitat app and set your hub location to get local time!"
+		log.warn "Time Zone is not set, time will be in UTC. Go to your ST app and set your hub location to get local time!"
 		def updtTime = new Date(time*1000L).format("HH:mm")
 		state.lastUpdated = updtTime
 		return updtTime + " UTC"   
@@ -859,7 +893,7 @@ def noiseTosound(Noise) {
 
 def checkloc() {
 	if(location.timeZone == null)
-		sendPush("Netatmo: Time Zone is not set, time will be in UTC. Go to your Hubitat app and set your hub location to get local time!")
+		sendPush("Netatmo: Time Zone is not set, time will be in UTC. Go to your ST app and set your hub location to get local time!")
 }
 
 def debugEvent(message, displayEvent) {
