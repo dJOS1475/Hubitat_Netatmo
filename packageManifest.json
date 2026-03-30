@@ -1,10 +1,10 @@
 {
   "packageName": "Netatmo (Connect) - Weather Station",
   "author": "Derek Osborn",
-  "version": "1.6",
+  "version": "1.6.1",
   "minimumHEVersion": "2.0.0",
   "dateReleased": "2024-10-01",
-  "releaseNotes": "v1.6 - Bug fixes: OAuth token parsing, stray syntax error, capability names, namespace/author update",
+  "releaseNotes": "v1.6.1 - Bug fixes: OAuth token parsing, stray syntax error, capability names, namespace/author update",
   "communityLink": "https://community.hubitat.com/t/re-release-netatmo-connect-weather-station/97788",
   "apps": [
     {
