@@ -5,8 +5,19 @@
  *  Now Maintained by dJOS as of 2022
  *	  
  *
- *  Last Update 03/28/2025
+ *  Last Update 06/18/2026
  *
+ *	v1.7.0 - Bug fix: use a dedicated state.authToken for the Netatmo API token so it no longer collides with the Hubitat OAuth token (state.accessToken)
+ *	       - Security fix: removed client_secret from the OAuth authorize URL (it is only used server-side during token exchange)
+ *	       - Removed unused state.response (full API payload was stored every poll but never read) to reduce state churn
+ *	       - "Connect to netatmo" button now opens the Netatmo authentication page in a new browser tab (style:"external")
+ *	       - Hardened OAuth token parsing (parseTokenResponse) to handle both a normally-parsed map and the legacy key-as-JSON-string response form
+ *	       - Removed dead/non-functional auth block (and unused parseAuthResponse) from oauthInitUrl()
+ *	       - Replaced invalid sendPush() call with log.warn in checkloc()
+ *	       - Redacted client_secret/credentials from debug logs during token exchange
+ *	       - Cleanup: removed unused DecimalFormat import and unused debugEvent(); UTF-8 charset on toQueryString; simplified redundant map merges; added command "poll" to all drivers for consistency
+ *	       - Added user-selectable polling interval (5/10/15 minutes) in the app config; defaults to 5 minutes
+ *	       - Sound Sensor threshold now defaults to 50 dB and is null-safe (no longer errors when left blank)
  *	v1.6.3 - Added support for HE v2.5.x to clasify this as an Integration
  *	v1.6 - Bug fixes: OAuth token parsing, stray syntax error, capability names, namespace/author update
  *	v1.5 - Added a manual reauthorize option
@@ -17,9 +28,8 @@
  * 
  */
 
-def version() { return "v1.6.3" }
+def version() { return "v1.7.0" }
 
-import java.text.DecimalFormat
 import groovy.json.JsonSlurper
 
 private getApiUrl()			{ "https://api.netatmo.com" }
@@ -95,7 +105,7 @@ def authPage() {
 			}
 			section() {
 				paragraph "Tap below to log in to Netatmo and authorize Hubitat access."
-				href url:oauthInitUrl(), external:true, required:false, title:"Connect to ${getVendorName()}:", description:description
+				href url:oauthInitUrl(), style:"external", external:true, required:false, title:"Connect to ${getVendorName()}:", description:description
 			}
 		}
 	} else {
@@ -106,7 +116,7 @@ def authPage() {
 			}
 			section() {
 				paragraph "If you are having issues, Tap below to log in to Netatmo and Re-authorize Hubitat access."
-				href url:oauthInitUrl(), external:true, required:false, title:"Connect to ${getVendorName()}:", description:description
+				href url:oauthInitUrl(), style:"external", external:true, required:false, title:"Connect to ${getVendorName()}:", description:description
 			}
 		}
 	}
@@ -118,46 +128,19 @@ def oauthInitUrl() {
 	state.oauthInitState = UUID.randomUUID().toString()
 	if(enableDebug == true){log.debug "oAuthInitStateIs: ${state.oauthInitState}"}
 
+	// Note: client_secret must NOT be included in the authorize URL — it is only
+	// used server-side during the token exchange (see callback() / refreshToken()).
 	def oauthParams = [
 		response_type: "code",
 		client_id: getClientId(),
-		client_secret: getClientSecret(),
 		state: state.oauthInitState,
 		redirect_uri: getCallbackUrl(),
 		scope: "read_station"
 	]
 
-	def authMethod = [
-		'location': [
-			uri: getApiUrl(),
-			path: getVendorAuthPath(),
-			requestContentType: "application/json",
-			query: [toQueryString(oauthParams)]
-		]
-	]
-
-	def authRequest = authMethod.getAt(authMethod)
-	try{
-		if(enableDebug == true){log.debug "Executing 'SendCommand'"}
-		if (authMethod == "location"){
-			if(enableDebug == true){log.debug "Executing 'SendAuthRequest'"}
-			httpGet(authRequest) { authResp ->
-				parseAuthResponse(authResp)
-			}
-		}
-	}
-	catch(Exception e){
-		if(enableDebug == true){log.debug("___exception: " + e)}
-	}
-
 	if(enableDebug == true){log.debug "REDIRECT URL: ${getApiUrl()}${getVendorAuthPath()}?${toQueryString(oauthParams)}"}
 
 	return "${getApiUrl()}${getVendorAuthPath()}?${toQueryString(oauthParams)}"
-}
-
-private parseAuthResponse(resp) {
-	if(enableDebug == true){log.debug("Executing parseAuthResponse: "+resp.data)}
-	if(enableDebug == true){log.debug("Output status: "+resp.status)}
 }
 
 def callback() {
@@ -177,7 +160,7 @@ def callback() {
 			scope: "read_station"
 		]
 
-		if(enableDebug == true){log.debug "TOKEN URL: ${getVendorTokenPath() + toQueryString(tokenParams)}"}
+		if(enableDebug == true){log.debug "TOKEN URL: ${getVendorTokenPath()} (params redacted)"}
 
 		def tokenUrl = getVendorTokenPath()
 		def params = [
@@ -186,20 +169,15 @@ def callback() {
 			body: tokenParams
 		]
 
-		if(enableDebug == true){log.debug "PARAMS: ${params}"}
+		if(enableDebug == true){log.debug "Requesting token from ${tokenUrl} (credentials redacted)"}
 
 		httpPost(params) { resp ->
+			def data = parseTokenResponse(resp.data)
 
-			def slurper = new JsonSlurper()
-
-			resp.data.each { key, value ->
-				def data = slurper.parseText(key)
-
-				state.refreshToken = data.refresh_token
-				state.authToken = data.access_token
-				state.tokenExpires = now() + (data.expires_in * 1000)
-				if(enableDebug == true){log.debug "swapped token: $resp.data"}
-			}
+			state.refreshToken = data.refresh_token
+			state.authToken = data.access_token
+			state.tokenExpires = now() + (data.expires_in * 1000)
+			if(enableDebug == true){log.debug "swapped token"}
 		}
 
 		// Handle success and failure here, and render stuff accordingly
@@ -305,6 +283,21 @@ def connectionStatus(message, redirectUrl = null) {
 	render contentType: 'text/html', data: html
 }
 
+// Robustly extract the token fields from an OAuth token response.
+// Hubitat normally parses the JSON body into a Map with the fields directly
+// accessible. Some hub/firmware combos instead hand back a single-entry Map
+// whose KEY is the raw JSON string (or a raw String body). Handle all cases.
+private parseTokenResponse(respData) {
+	if (respData instanceof Map && respData.containsKey("access_token")) {
+		return respData
+	}
+	def slurper = new JsonSlurper()
+	if (respData instanceof Map && !respData.isEmpty()) {
+		return slurper.parseText(respData.keySet().toList().first().toString())
+	}
+	return slurper.parseText(respData.toString())
+}
+
 def refreshToken() {
 	if(enableDebug == true){log.debug "In refreshToken"}
 
@@ -325,26 +318,19 @@ def refreshToken() {
 	// OAuth Step 2: Request access token with our client Secret and OAuth "Code"
 	try {
 		httpPost(params) { response ->
-			def slurper = new JsonSlurper();
+			def data = parseTokenResponse(response.data)
 
-			response.data.each {key, value ->
-				def data = slurper.parseText(key);
-				if(enableDebug == true){log.debug "Data: $data"}
-
-				state.refreshToken = data.refresh_token
-				state.accessToken = data.access_token
-				state.tokenExpires = now() + (data.expires_in * 1000)
-				if(enableDebug == true){log.debug "refreshToken: refreshed tokens"}
-				return true
-			}
-
+			state.refreshToken = data.refresh_token
+			state.authToken = data.access_token
+			state.tokenExpires = now() + (data.expires_in * 1000)
+			if(enableDebug == true){log.debug "refreshToken: refreshed tokens"}
 		}
 	} catch (Exception e) {
 		log.error "refreshToken: Error: $e"
 	}
 
 	// We didn't get an access token
-	if ( !state.accessToken ) {
+	if ( !state.authToken ) {
 		log.error "refreshToken: no access token"
 		return false
 	}
@@ -352,7 +338,7 @@ def refreshToken() {
 }
 
 String toQueryString(Map m) {
-	return m.collect { k, v -> "${k}=${URLEncoder.encode(v.toString())}" }.sort().join("&")
+	return m.collect { k, v -> "${k}=${URLEncoder.encode(v.toString(), "UTF-8")}" }.sort().join("&")
 }
 
 def installed() {
@@ -416,8 +402,19 @@ def initialize() {
 	checkloc()
 	// Do the initial poll
 	poll()
-	// Schedule it to run every 5 minutes
-	runEvery5Minutes("poll")
+	// Schedule recurring polls at the user-selected interval (default 5 minutes)
+	switch(settings.pollInterval) {
+		case "10":
+			runEvery10Minutes("poll")
+			break
+		case "15":
+			runEvery15Minutes("poll")
+			break
+		default:
+			runEvery5Minutes("poll")
+			break
+	}
+	if(enableDebug == true){log.debug "Polling scheduled every ${settings.pollInterval ?: 5} minutes"}
 }
 
 def uninstalled() {
@@ -434,7 +431,6 @@ def getDeviceList() {
 	state.deviceState = [:]
 
 	apiGet("/api/getstationsdata",["get_favorites":true]) { resp ->
-		state.response = resp.data.body
 		resp.data.body.devices.each { value ->
 			def outdoorID = null
 			def windID = null
@@ -481,26 +477,26 @@ def getDeviceList() {
 				if (value2.type == "NAModule3") { rainID = key2 }
 			}
 			if ( (outdoorID != null) && (windID != null) ) {
-				state.deviceState[outdoorID] = state.deviceState[outdoorID] << ["WindAngle" : state.deviceState[windID].WindAngle]
-				state.deviceState[outdoorID] = state.deviceState[outdoorID] << ["WindStrength" : state.deviceState[windID].WindStrength]
-				state.deviceState[outdoorID] = state.deviceState[outdoorID] << ["GustAngle" : state.deviceState[windID].GustAngle]
-				state.deviceState[outdoorID] = state.deviceState[outdoorID] << ["GustStrength" : state.deviceState[windID].GustStrength]
+				state.deviceState[outdoorID] << ["WindAngle" : state.deviceState[windID].WindAngle]
+				state.deviceState[outdoorID] << ["WindStrength" : state.deviceState[windID].WindStrength]
+				state.deviceState[outdoorID] << ["GustAngle" : state.deviceState[windID].GustAngle]
+				state.deviceState[outdoorID] << ["GustStrength" : state.deviceState[windID].GustStrength]
 			}
 			if (mainID != null) {
 				if (rainID != null) {
-					state.deviceState[mainID] = state.deviceState[mainID] << ["Rain" : state.deviceState[rainID].Rain]
-					state.deviceState[mainID] = state.deviceState[mainID] << ["sum_rain_1" : state.deviceState[rainID].sum_rain_1]
-					state.deviceState[mainID] = state.deviceState[mainID] << ["sum_rain_24" : state.deviceState[rainID].sum_rain_24]
+					state.deviceState[mainID] << ["Rain" : state.deviceState[rainID].Rain]
+					state.deviceState[mainID] << ["sum_rain_1" : state.deviceState[rainID].sum_rain_1]
+					state.deviceState[mainID] << ["sum_rain_24" : state.deviceState[rainID].sum_rain_24]
 				}
 				if (outdoorID != null) {
-					state.deviceState[mainID] = state.deviceState[mainID] << ["TemperatureOutdoor" : state.deviceState[outdoorID].Temperature]
-					state.deviceState[mainID] = state.deviceState[mainID] << ["HumidityOutdoor" : state.deviceState[outdoorID].Humidity]
+					state.deviceState[mainID] << ["TemperatureOutdoor" : state.deviceState[outdoorID].Temperature]
+					state.deviceState[mainID] << ["HumidityOutdoor" : state.deviceState[outdoorID].Humidity]
 				}
 				if (windID != null) {
-					state.deviceState[mainID] = state.deviceState[mainID] << ["WindAngle" : state.deviceState[windID].WindAngle]
-					state.deviceState[mainID] = state.deviceState[mainID] << ["WindStrength" : state.deviceState[windID].WindStrength]
-					state.deviceState[mainID] = state.deviceState[mainID] << ["GustAngle" : state.deviceState[windID].GustAngle]
-					state.deviceState[mainID] = state.deviceState[mainID] << ["GustStrength" : state.deviceState[windID].GustStrength]
+					state.deviceState[mainID] << ["WindAngle" : state.deviceState[windID].WindAngle]
+					state.deviceState[mainID] << ["WindStrength" : state.deviceState[windID].WindStrength]
+					state.deviceState[mainID] << ["GustAngle" : state.deviceState[windID].GustAngle]
+					state.deviceState[mainID] << ["GustStrength" : state.deviceState[windID].GustStrength]
 				}
 			}
 		}
@@ -549,7 +545,8 @@ def listDevices() {
 			input "pressUnits", "enum", title: "Pressure Units", description: "Please select pressure units", required: true, options: [mbar:'mbar', inhg:'inhg']
 			input "windUnits", "enum", title: "Wind Units", description: "Please select wind units", required: true, options: [kph:'kph', ms:'ms', mph:'mph', kts:'kts']
 			input "time", "enum", title: "Time Format", description: "Please select time format", required: true, options: [12:'12 Hour', 24:'24 Hour']
-			input "sound", "number", title: "Sound Sensor: \nEnter the value when sound will be marked as detected", description: "Please enter number", required: false
+			input "pollInterval", "enum", title: "Polling Interval", description: "How often to poll Netatmo (data updates ~every 10 min)", required: true, defaultValue: "5", options: [5:'5 Minutes', 10:'10 Minutes', 15:'15 Minutes']
+			input "sound", "number", title: "Sound Sensor: \nEnter the dB value above which sound is marked as detected (typical quiet home is ~40-50 dB)", description: "Please enter number", required: false, defaultValue: 50
 			paragraph ""
 			input("reverseWindAngle", "bool", title:"Use Reverse wind angle (Netatmo display method - angle point to source of wind)).",defaultValue:false, required:true)
 			paragraph ""
@@ -563,7 +560,7 @@ def apiGet(String path, Map query, Closure callback) {
 		refreshToken();
 	}
 
-	query['access_token'] = state.accessToken
+	query['access_token'] = state.authToken
 	def params = [
 		uri: getApiUrl(),
 		path: path,
@@ -882,7 +879,8 @@ def gustTotext(GustAngle) {
 }
 
 def noiseTosound(Noise) {
-	if(Noise > settings.sound) { 
+	def threshold = (settings.sound != null) ? settings.sound : 50
+	if(Noise > threshold) {
 		return "detected"
 	} else {
 		return "not detected"
@@ -891,17 +889,7 @@ def noiseTosound(Noise) {
 
 def checkloc() {
 	if(location.timeZone == null)
-		sendPush("Netatmo: Time Zone is not set, time will be in UTC. Go to your Hubitat app and set your hub location to get local time!")
-}
-
-def debugEvent(message, displayEvent) {
-	def results = [
-		name: "appdebug",
-		descriptionText: message,
-		displayed: displayEvent
-	]
-	if(enableDebug == true){log.debug "Generating AppDebug Event: ${results}"}
-	sendEvent (results)
+		log.warn "Netatmo: Time Zone is not set, time will be in UTC. Go to your Hubitat app and set your hub location to get local time!"
 }
 
 def log_debug(msg) {
