@@ -7,7 +7,7 @@
  *
  *  Last Update 03/28/2025
  *
- *	v1.6.2 - Added support for HE v2.5.x to clasify this as an Integration
+ *	v1.6.3 - Added support for HE v2.5.x to clasify this as an Integration
  *	v1.6 - Bug fixes: OAuth token parsing, stray syntax error, capability names, namespace/author update
  *	v1.5 - Added a manual reauthorize option
  *	v1.4 - Updated URL to https://dev.netatmo.com/
@@ -17,7 +17,7 @@
  * 
  */
 
-def version() { return "v1.6.2" }
+def version() { return "v1.6.3" }
 
 import java.text.DecimalFormat
 import groovy.json.JsonSlurper
