@@ -4,7 +4,7 @@
   "version": "1.7.0",
   "minimumHEVersion": "2.4.0",
   "dateReleased": "2024-10-01",
-  "releaseNotes": "v1.7.0 -  Fixed OAuth token handling (separate Hubitat/Netatmo tokens, hardened token parsing, removed client_secret from the authorize URL), added user-selectable polling interval (5/10/15 min) and a default 50 dB sound threshold, opened the Connect button in a new tab, and cleaned up dead/insecure code plus redacted secrets from logs.",
+  "releaseNotes": "v1.7.0 -  Fixed OAuth token handling, separate Hubitat/Netatmo tokens, hardened token parsing, removed client_secret from the authorize URL, added user-selectable polling interval 5/10/15 min and a default 50 dB sound threshold, opened the Connect button in a new tab, and cleaned up dead/insecure code plus redacted secrets from logs.",
   "communityLink": "https://community.hubitat.com/t/re-release-netatmo-connect-weather-station/97788",
   "apps": [
     {
