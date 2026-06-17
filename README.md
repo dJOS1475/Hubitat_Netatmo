@@ -7,5 +7,6 @@ Enhancements for Hubitat by CybrMage - March 3, 2020
       
   Battery Status order changed + minor tweaks to summary tile aesthetic's
 
+ *	v1.7.0 -  Major overhaul of OAuth token handling and security improvements, added user-selectable polling interval, a default 50 dB sound threshold, opened the Connect button in a new tab.
  *	v1.6 - Bug fixes: OAuth token parsing, stray syntax error, capability names, namespace/author update
  *	v1.5 - Added a manual reauthorize option
