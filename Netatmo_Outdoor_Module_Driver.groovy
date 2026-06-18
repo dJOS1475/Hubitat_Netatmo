@@ -9,7 +9,7 @@
  *
  */
 
-def version() { return "v1.7.0" }
+def version() { return "v1.7.1" }
 
 metadata {
 	definition (name: "Netatmo Outdoor Module", namespace: "dJOS", author: "Derek Osborn",importUrl: "https://raw.githubusercontent.com/dJOS1475/Hubitat_Netatmo/refs/heads/main/Netatmo_Outdoor_Module_Driver.groovy") {
@@ -17,17 +17,23 @@ metadata {
 		capability "TemperatureMeasurement"
 		capability "Sensor"
 		capability "Battery"
+		capability "PresenceSensor"
 		capability "Refresh"
 
 		attribute "date_min_temp", "number"
 		attribute "min_temp", "number"
-		attribute "date_max_temp", "number"   
-		attribute "max_temp", "number"   
+		attribute "date_max_temp", "number"
+		attribute "max_temp", "number"
 		attribute "temp_trend", "string"
 		attribute "lastupdate", "string"
 
 		attribute "windSpeed", "number"
 		attribute "windDirection", "number"
+
+		attribute "rf_status", "number"
+		attribute "battery_vp", "number"
+		attribute "firmware", "number"
+		attribute "last_seen", "string"
 
 		attribute "Summary", "string"
 

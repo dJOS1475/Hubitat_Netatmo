@@ -5,8 +5,10 @@
  *  Now Maintained by dJOS as of 2022
  *	  
  *
- *  Last Update 06/18/2026
+ *  Last Update 06/19/2026
  *
+ *	v1.7.1 - Signal strength (WiFi/RF) shown as Good/Average/Poor bands instead of raw values, and moved onto the last (Battery) row in the Summary tiles
+ *	       - Overview tile no longer prints "null" for Outdoor/Wind/Rain when the base station has no such module feeding it (lines are now omitted when data is absent)
  *	v1.7.0 - Bug fix: use a dedicated state.authToken for the Netatmo API token so it no longer collides with the Hubitat OAuth token (state.accessToken)
  *	       - Security fix: removed client_secret from the OAuth authorize URL (it is only used server-side during token exchange)
  *	       - Removed unused state.response (full API payload was stored every poll but never read) to reduce state churn
@@ -18,6 +20,8 @@
  *	       - Cleanup: removed unused DecimalFormat import and unused debugEvent(); UTF-8 charset on toQueryString; simplified redundant map merges; added command "poll" to all drivers for consistency
  *	       - Added user-selectable polling interval (5/10/15 minutes) in the app config; defaults to 5 minutes
  *	       - Sound Sensor threshold now defaults to 50 dB and is null-safe (no longer errors when left blank)
+ *	       - New attributes from the API: presence (reachable), wifi_status/rf_status, battery_vp, firmware, last_seen, AbsolutePressure (base), max_wind_angle (wind)
+ *	       - Summary tiles: added Absolute pressure + WiFi (base), RF status (all modules), and Max Gust direction (wind)
  *	v1.6.3 - Added support for HE v2.5.x to clasify this as an Integration
  *	v1.6 - Bug fixes: OAuth token parsing, stray syntax error, capability names, namespace/author update
  *	v1.5 - Added a manual reauthorize option
@@ -28,7 +32,7 @@
  * 
  */
 
-def version() { return "v1.7.0" }
+def version() { return "v1.7.1" }
 
 import groovy.json.JsonSlurper
 
@@ -617,20 +621,31 @@ def poll() {
 				try { child?.sendEvent(name: 'units', value: settings.pressUnits) } catch(e){}
 				try { child?.sendEvent(name: 'date_min_temp', value: lastUpdated(data['date_min_temp']), unit: "") } catch (e){}
 				try { child?.sendEvent(name: 'date_max_temp', value: lastUpdated(data['date_max_temp']), unit: "") } catch (e){}
-				try { 
-					def mainSummary = "<div style='line-height: 0.95; font-size: 0.75em;'>" + "<br>" + 
+				try { child?.sendEvent(name: 'AbsolutePressure', value: (pressToPref(data['AbsolutePressure'])).toDouble().trunc(2), unit: settings.pressUnits) } catch (e){}
+				try { child?.sendEvent(name: 'presence', value: (detail['reachable']) ? "present" : "not present") } catch (e){}
+				try { child?.sendEvent(name: 'wifi_status', value: detail['wifi_status'], unit: "") } catch (e){}
+				try { child?.sendEvent(name: 'firmware', value: detail['firmware'], unit: "") } catch (e){}
+				try { child?.sendEvent(name: 'last_seen', value: lastUpdated(detail['last_status_store']), unit: "") } catch (e){}
+				try {
+					def mainSummary = "<div style='line-height: 0.95; font-size: 0.75em;'>" + "<br>" +
 						"Indoor:&nbsp;" + cToPref(data['Temperature']) + "&deg;" + getTemperatureScale() + "&nbsp;-&nbsp;" + data["temp_trend"] + "<br>" + "<div style='line-height:50%;'><br></div>" + 
 						"Min&nbsp;/&nbsp;Max:&nbsp;" + cToPref(data['min_temp']) + "&deg;" + getTemperatureScale() + "&nbsp;/&nbsp;" + cToPref(data['max_temp']) + "&deg;" + getTemperatureScale() + "<br>" + "<br>" + 
 						"Humidity:&nbsp;" + data['Humidity'] + "%&nbsp;&nbsp;" + "CO2:&nbsp;" + data['CO2'] + "ppm" + "<br><br>" + 
-						"ATM:&nbsp;" + (pressToPref(data['Pressure'])).toDouble().trunc(2) + settings.pressUnits + "&nbsp;&nbsp;SPL:&nbsp;" + data['Noise'] + "db" + "<br>" +
+						"ATM:&nbsp;" + (pressToPref(data['Pressure'])).toDouble().trunc(2) + settings.pressUnits + "&nbsp;&nbsp;SPL:&nbsp;" + data['Noise'] + "db" + "<br>" + "<br>" +
+						"Abs:&nbsp;" + (pressToPref(data['AbsolutePressure'])).toDouble().trunc(2) + settings.pressUnits + "&nbsp;&nbsp;WiFi:&nbsp;" + wifiToText(detail['wifi_status']) + "<br>" +
 						"</div>"
 					child?.sendEvent(name: 'Summary', value: mainSummary, displayed: false) } catch(e){log_debug(e)}
-				try { 
-					def Overview = "<div style='line-height: 0.95; font-size: 0.75em;'>" + "<br>" + 
-						"Indoor:&nbsp;" + cToPref(data['Temperature']) + "&deg;" + getTemperatureScale() + "@" + data['Humidity'] + "%RH" + "<br>" + "<div style='line-height:50%;'><br></div>" + 
-						"Outdoor:&nbsp;" + cToPref(data['TemperatureOutdoor']) + "&deg;" + getTemperatureScale() + "@" + data['HumidityOutdoor'] + "%RH" + "<br>" + "<div style='line-height:50%;'><br></div>" + 
-						"Wind: " + windToPrefUnits(data['WindStrength']) + angleToOrdinal(data['WindAngle']) + "&nbsp;(" + windToPrefUnits(data['GustStrength']) + angleToOrdinal(data['GustAngle']) + ")<div style='line-height:50%;'><br></div>" + 
-						"Rain:&nbsp;" + rainToPrefUnits(data['sum_rain_24']) + "&nbsp;&nbsp;" + "CO2:&nbsp;" + data['CO2'] + "ppm" + "<div style='line-height:50%;'><br></div>" + 
+				try {
+					def half = "<div style='line-height:50%;'><br></div>"
+					def Overview = "<div style='line-height: 0.95; font-size: 0.75em;'>" + "<br>" +
+						"Indoor:&nbsp;" + cToPref(data['Temperature']) + "&deg;" + getTemperatureScale() + "@" + data['Humidity'] + "%RH" + "<br>" + half
+					if (data['TemperatureOutdoor'] != null) {
+						Overview += "Outdoor:&nbsp;" + cToPref(data['TemperatureOutdoor']) + "&deg;" + getTemperatureScale() + "@" + data['HumidityOutdoor'] + "%RH" + "<br>" + half
+					}
+					if (data['WindStrength'] != null) {
+						Overview += "Wind: " + windToPrefUnits(data['WindStrength']) + angleToOrdinal(data['WindAngle']) + "&nbsp;(" + windToPrefUnits(data['GustStrength']) + angleToOrdinal(data['GustAngle']) + ")" + half
+					}
+					Overview += ((data['sum_rain_24'] != null) ? "Rain:&nbsp;" + rainToPrefUnits(data['sum_rain_24']) + "&nbsp;&nbsp;" : "") + "CO2:&nbsp;" + data['CO2'] + "ppm" + half +
 						"ATM:&nbsp;" + (pressToPref(data['Pressure'])).toDouble().trunc(2) + settings.pressUnits + "&nbsp;&nbsp;SPL:&nbsp;" + data['Noise'] + "db" + "<br>" +
 						"</div>"
 					child?.sendEvent(name: 'Overview', value: Overview, displayed: false) } catch(e){log_debug(e)}
@@ -649,13 +664,18 @@ def poll() {
 				try { child?.sendEvent(name: 'windDirection', value: data['WindAngle']) } catch(e){}
 //				try { child?.sendEvent(name: 'windSpeed', value: (windToPref(data['WindStrength'])).toDouble().trunc(1), unit: settings.windUnits) } catch(e){}
 				try { child?.sendEvent(name: 'windSpeed', value: (windToPref(data['WindStrength'])).toDouble().longValue() + "/" + (windToPref(data['GustStrength'])).toDouble().longValue(), unit: settings.windUnits) } catch(e){}
-				try { 
-					def outdoorSummary = "<div style='line-height: 0.95; font-size: 0.75em;'>" + "<br>" + 
+				try { child?.sendEvent(name: 'presence', value: (detail['reachable']) ? "present" : "not present") } catch(e){}
+				try { child?.sendEvent(name: 'rf_status', value: detail['rf_status'], unit: "") } catch(e){}
+				try { child?.sendEvent(name: 'battery_vp', value: detail['battery_vp'], unit: "") } catch(e){}
+				try { child?.sendEvent(name: 'firmware', value: detail['firmware'], unit: "") } catch(e){}
+				try { child?.sendEvent(name: 'last_seen', value: lastUpdated(detail['last_seen']), unit: "") } catch(e){}
+				try {
+					def outdoorSummary = "<div style='line-height: 0.95; font-size: 0.75em;'>" + "<br>" +
 						"Outdoor: " + cToPref(data['Temperature']) + "&deg;" + getTemperatureScale() + " - " + data["temp_trend"] + "<br>" + "<br>" + 
 						"Minimum: " + cToPref(data['min_temp']) + "&deg;" + getTemperatureScale() + "<br>" + "<div style='line-height:50%;'><br></div>" + 
 						"Maximum: " + cToPref(data['max_temp']) + "&deg;" + getTemperatureScale() + "<br>" + "<br>" + 
-						"Humidity: " + data['Humidity'] + "%" + "<br>" + "<br>" + 
-						"Battery: " + detail['battery_percent'] + "%<br>" + "<br>" + 
+						"Humidity: " + data['Humidity'] + "%" + "<br>" + "<br>" +
+						"Battery: " + detail['battery_percent'] + "%&nbsp;&nbsp;RF: " + rfToText(detail['rf_status']) + "<br>" + "<br>" +
 						"</div>"
 					child?.sendEvent(name: 'Summary', value: outdoorSummary, displayed: false) } catch(e){log_debug(e)}
 				break;
@@ -670,8 +690,13 @@ def poll() {
 				try { child?.sendEvent(name: 'rainUnits', value: rainToPrefUnits(data['Rain']), displayed: false) } catch(e){}
 				try { child?.sendEvent(name: 'rainSumHourUnits', value: rainToPrefUnits(data['sum_rain_1']), displayed: false) } catch(e){}
 				try { child?.sendEvent(name: 'rainSumDayUnits', value: rainToPrefUnits(data['sum_rain_24']), displayed: false) } catch(e){}
-				try { 
-					def rainSummary = "<div style='line-height: 0.95; font-size: 0.75em;'>Today: " + rainToPrefUnits(data['sum_rain_24']) + "<br><br>This hour: " + rainToPrefUnits(data['sum_rain_1'])+"<br><br>Battery: " + detail['battery_percent'] + "%</div>"
+				try { child?.sendEvent(name: 'presence', value: (detail['reachable']) ? "present" : "not present") } catch(e){}
+				try { child?.sendEvent(name: 'rf_status', value: detail['rf_status'], unit: "") } catch(e){}
+				try { child?.sendEvent(name: 'battery_vp', value: detail['battery_vp'], unit: "") } catch(e){}
+				try { child?.sendEvent(name: 'firmware', value: detail['firmware'], unit: "") } catch(e){}
+				try { child?.sendEvent(name: 'last_seen', value: lastUpdated(detail['last_seen']), unit: "") } catch(e){}
+				try {
+					def rainSummary = "<div style='line-height: 0.95; font-size: 0.75em;'>Today: " + rainToPrefUnits(data['sum_rain_24']) + "<br><br>This hour: " + rainToPrefUnits(data['sum_rain_1'])+"<br><br>Battery: " + detail['battery_percent'] + "%&nbsp;&nbsp;RF: " + rfToText(detail['rf_status']) + "</div>"
 					child?.sendEvent(name: 'Summary', value: rainSummary, displayed: false) } catch(e){log_debug(e)}
 				break;
 			case 'NAModule4':
@@ -686,13 +711,18 @@ def poll() {
 				try { child?.sendEvent(name: 'lastupdate', value: lastUpdated(data['time_utc']), unit: "") } catch(e){}
 				try { child?.sendEvent(name: 'date_min_temp', value: lastUpdated(data['date_min_temp']), unit: "") } catch(e){}
 				try { child?.sendEvent(name: 'date_max_temp', value: lastUpdated(data['date_max_temp']), unit: "") } catch(e){}
-				try { 
-					def additionalSummary = "<div style='line-height: 0.95; font-size: 0.75em;'>" + "<br>" + 
-						"Battery: " + detail['battery_percent'] + "%<br>" + "<div style='line-height:50%;'><br></div>" + "<div style='line-height:50%;'><br></div>" +
-						"Indoor:&nbsp;" + cToPref(data['Temperature']) + "&deg;" + getTemperatureScale() + "&nbsp;-&nbsp;" + data["temp_trend"] + "<br>" + "<div style='line-height:50%;'><br></div>" + 
-						"Min&nbsp;/&nbsp;Max:&nbsp;" + cToPref(data['min_temp']) + "&deg;" + getTemperatureScale() + "&nbsp;/&nbsp;" + cToPref(data['max_temp']) + "&deg;" + getTemperatureScale() + "<br>" + "<br>" + 
-						"Humidity:&nbsp;" + data['Humidity'] + "%&nbsp;&nbsp;" + "CO2:&nbsp;" + data['CO2'] + "ppm" + "<br>" + 
+				try { child?.sendEvent(name: 'presence', value: (detail['reachable']) ? "present" : "not present") } catch(e){}
+				try { child?.sendEvent(name: 'rf_status', value: detail['rf_status'], unit: "") } catch(e){}
+				try { child?.sendEvent(name: 'battery_vp', value: detail['battery_vp'], unit: "") } catch(e){}
+				try { child?.sendEvent(name: 'firmware', value: detail['firmware'], unit: "") } catch(e){}
+				try { child?.sendEvent(name: 'last_seen', value: lastUpdated(detail['last_seen']), unit: "") } catch(e){}
+				try {
+					def additionalSummary = "<div style='line-height: 0.95; font-size: 0.75em;'>" + "<br>" +
+						"Indoor:&nbsp;" + cToPref(data['Temperature']) + "&deg;" + getTemperatureScale() + "&nbsp;-&nbsp;" + data["temp_trend"] + "<br>" + "<div style='line-height:50%;'><br></div>" +
+						"Min&nbsp;/&nbsp;Max:&nbsp;" + cToPref(data['min_temp']) + "&deg;" + getTemperatureScale() + "&nbsp;/&nbsp;" + cToPref(data['max_temp']) + "&deg;" + getTemperatureScale() + "<br>" + "<br>" +
+						"Humidity:&nbsp;" + data['Humidity'] + "%&nbsp;&nbsp;" + "CO2:&nbsp;" + data['CO2'] + "ppm" + "<br>" + "<br>" +
 //						"ATM:&nbsp;" + (pressToPref(data['Pressure'])).toDouble().trunc(2) + settings.pressUnits + "&nbsp;&nbsp;SPL:&nbsp;" + data['Noise'] + "db" + "<br>" +
+						"Battery: " + detail['battery_percent'] + "%&nbsp;&nbsp;RF: " + rfToText(detail['rf_status']) + "<br>" +
 						"</div>"
 					child?.sendEvent(name: 'Summary', value: additionalSummary, displayed: false) } catch(e){log_debug(e)}
 				break;
@@ -714,14 +744,22 @@ def poll() {
 				try { child?.sendEvent(name: 'WindStrengthUnits', value: windToPrefUnits(data['WindStrength']), displayed: false) } catch(e){}
 				try { child?.sendEvent(name: 'GustStrengthUnits', value: windToPrefUnits(data['GustStrength']), displayed: false) } catch(e){}
 				try { child?.sendEvent(name: 'max_wind_strUnits', value: windToPrefUnits(data['max_wind_str']), displayed: false) } catch(e){}
-				try { 
+				try { child?.sendEvent(name: 'max_wind_angle', value: data['max_wind_angle'], unit: "°", displayed: false) } catch(e){}
+				try { child?.sendEvent(name: 'presence', value: (detail['reachable']) ? "present" : "not present") } catch(e){}
+				try { child?.sendEvent(name: 'rf_status', value: detail['rf_status'], unit: "") } catch(e){}
+				try { child?.sendEvent(name: 'battery_vp', value: detail['battery_vp'], unit: "") } catch(e){}
+				try { child?.sendEvent(name: 'firmware', value: detail['firmware'], unit: "") } catch(e){}
+				try { child?.sendEvent(name: 'last_seen', value: lastUpdated(detail['last_seen']), unit: "") } catch(e){}
+				try {
 					def windAngleIcon = "<div class='weatherDirection' style='transform: rotate(" + data['WindAngle'].toString() + "deg)'><i class='material icons " + ((reverseWindAngle) ? "he-arrow-down2" : "he-arrow-up2") + "'></i></div>"
 					def gustAngleIcon = "<div class='weatherDirection' style='transform: rotate(" + data['GustAngle'].toString() + "deg)'><i class='material icons " + ((reverseWindAngle) ? "he-arrow-down2" : "he-arrow-up2") + "'></i></div>"
+					def maxGustAngleIcon = "<div class='weatherDirection' style='transform: rotate(" + data['max_wind_angle'].toString() + "deg)'><i class='material icons " + ((reverseWindAngle) ? "he-arrow-down2" : "he-arrow-up2") + "'></i></div>"
 					def windSummary = "<div style='line-height: 0.95; font-size: 0.75em; align: left;'>" + "<br>" + "<div style='line-height:50%;'><br></div>" +
-//						"Wind: " + windToPref(data['WindStrength']) + "<br>" + windAngleIcon + windTotext(data['WindAngle']) + "<br>" + "<div style='line-height:50%;'><br></div>" + 
-						"Wind: " + windToPrefUnits(data['WindStrength']) + "&nbsp;@" + angleToShortText(data['WindAngle']) + windAngleIcon + "<div style='line-height:50%;'><br></div>" + 
-						"Gust: " + windToPrefUnits(data['GustStrength']) + "&nbsp;@" + angleToShortText(data['GustAngle']) + gustAngleIcon + "<div style='line-height:50%;'><br></div>" + 
-						"Battery: " + detail['battery_percent'] + "%<br>" + "<div style='line-height:50%;'><br></div>" + "<div style='line-height:50%;'><br></div>" +
+//						"Wind: " + windToPref(data['WindStrength']) + "<br>" + windAngleIcon + windTotext(data['WindAngle']) + "<br>" + "<div style='line-height:50%;'><br></div>" +
+						"Wind: " + windToPrefUnits(data['WindStrength']) + "&nbsp;@" + angleToShortText(data['WindAngle']) + windAngleIcon + "<div style='line-height:50%;'><br></div>" +
+						"Gust: " + windToPrefUnits(data['GustStrength']) + "&nbsp;@" + angleToShortText(data['GustAngle']) + gustAngleIcon + "<div style='line-height:50%;'><br></div>" +
+						"Max Gust: " + windToPrefUnits(data['max_wind_str']) + "&nbsp;@" + angleToShortText(data['max_wind_angle']) + maxGustAngleIcon + "<div style='line-height:50%;'><br></div>" +
+						"Battery: " + detail['battery_percent'] + "%&nbsp;&nbsp;RF: " + rfToText(detail['rf_status']) + "<br>" + "<div style='line-height:50%;'><br></div>" + "<div style='line-height:50%;'><br></div>" +
 						"</div>"
 					child?.sendEvent(name: 'Summary', value: windSummary, displayed: false) } catch(e){log_debug(e)}
 				break;
@@ -885,6 +923,22 @@ def noiseTosound(Noise) {
 	} else {
 		return "not detected"
 	}
+}
+
+// Netatmo WiFi signal: lower value = stronger (56 = good, 86 = bad)
+def wifiToText(status) {
+	if (status == null) { return "" }
+	if (status <= 56) { return "Good" }
+	else if (status <= 71) { return "Average" }
+	else { return "Poor" }
+}
+
+// Netatmo RF (module radio) signal: lower value = stronger (60 = highest, 90 = low)
+def rfToText(status) {
+	if (status == null) { return "" }
+	if (status <= 70) { return "Good" }
+	else if (status <= 80) { return "Average" }
+	else { return "Poor" }
 }
 
 def checkloc() {

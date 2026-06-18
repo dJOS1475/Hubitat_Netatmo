@@ -9,12 +9,13 @@
  *
  */
 
-def version() { return "v1.7.0" }
+def version() { return "v1.7.1" }
 
 metadata {
 	definition (name: "Netatmo Rain", namespace: "dJOS", author: "Derek Osborn", importUrl: "https://raw.githubusercontent.com/dJOS1475/Hubitat_Netatmo/refs/heads/main/Netatmo_Rain_Driver.groovy") {
 		capability "Sensor"
 		capability "Battery"
+		capability "PresenceSensor"
 		capability "Refresh"
 
 		attribute "rain", "number"
@@ -22,6 +23,10 @@ metadata {
 		attribute "rainSumDay", "number"
 		attribute "units", "string"
 		attribute "lastupdate", "string"
+		attribute "rf_status", "number"
+		attribute "battery_vp", "number"
+		attribute "firmware", "number"
+		attribute "last_seen", "string"
 		attribute "Summary", "string"
 	
 		command "poll"

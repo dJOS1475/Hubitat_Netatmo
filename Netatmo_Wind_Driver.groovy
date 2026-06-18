@@ -9,12 +9,13 @@
  *
  */
 
-def version() { return "v1.7.0" }
+def version() { return "v1.7.1" }
 
 metadata {
 	definition (name: "Netatmo Wind", namespace: "dJOS", author: "Derek Osborn", importUrl: "https://raw.githubusercontent.com/dJOS1475/Hubitat_Netatmo/refs/heads/main/Netatmo_Wind_Driver.groovy") {
 		capability "Sensor"
 		capability "Battery"
+		capability "PresenceSensor"
 		capability "Refresh"
 
 		attribute "WindStrength", "number"
@@ -24,9 +25,15 @@ metadata {
 		attribute "GustStrength", "number"
 		attribute "GustAngle", "number"
 		attribute "max_wind_str", "number"
+		attribute "max_wind_angle", "number"
 		attribute "units", "string"
 		attribute "lastupdate", "string"
 		attribute "date_max_wind_str", "string"
+
+		attribute "rf_status", "number"
+		attribute "battery_vp", "number"
+		attribute "firmware", "number"
+		attribute "last_seen", "string"
 
 		attribute "Summary", "string"
 

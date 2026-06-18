@@ -9,7 +9,7 @@
  *
  */
 
-def version() { return "v1.7.0" }
+def version() { return "v1.7.1" }
 
 metadata {
 	definition (name: "Netatmo Basestation", namespace: "dJOS", author: "Derek Osborn", importUrl: "https://raw.githubusercontent.com/dJOS1475/Hubitat_Netatmo/refs/heads/main/Netatmo_BaseStation_Driver.groovy") {
@@ -19,15 +19,20 @@ metadata {
 		capability "CarbonDioxideMeasurement"
 		capability "SoundPressureLevel"
 		capability "SoundSensor"
+		capability "PresenceSensor"
 		capability "Refresh"
 
 		attribute "pressure", "number"
+		attribute "AbsolutePressure", "number"
 		attribute "min_temp", "number"
 		attribute "max_temp", "number"
 		attribute "temp_trend", "string"
 		attribute "pressure_trend", "string"
 		attribute "lastupdate", "string"
 		attribute "LastActivity", "string"
+		attribute "wifi_status", "number"
+		attribute "firmware", "number"
+		attribute "last_seen", "string"
 
 		attribute "Summary", "string"
 		attribute "Overview", "string"
