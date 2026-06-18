@@ -9,6 +9,7 @@
  *
  *	v1.7.1 - Signal strength (WiFi/RF) shown as Good/Average/Poor bands instead of raw values, and moved onto the last (Battery) row in the Summary tiles
  *	       - Overview tile no longer prints "null" for Outdoor/Wind/Rain when the base station has no such module feeding it (lines are now omitted when data is absent)
+ *	       - Additional device attributes now available: presence (online/offline), firmware and last_seen (all devices); wifi_status (base); rf_status and battery_vp (modules); AbsolutePressure (base); max_wind_angle (wind)
  *	v1.7.0 - Bug fix: use a dedicated state.authToken for the Netatmo API token so it no longer collides with the Hubitat OAuth token (state.accessToken)
  *	       - Security fix: removed client_secret from the OAuth authorize URL (it is only used server-side during token exchange)
  *	       - Removed unused state.response (full API payload was stored every poll but never read) to reduce state churn
