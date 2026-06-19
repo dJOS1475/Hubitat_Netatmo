@@ -4,7 +4,7 @@
   "version": "1.7.2",
   "minimumHEVersion": "2.4.0",
   "dateReleased": "2024-10-01",
-  "releaseNotes": "v1.7.1 - Signal strength (WiFi/RF) shown as Good/Average/Poor bands instead of raw values, and moved onto the last (Battery) row in the Summary tiles and Additional device attributes now available n/ v1.7.2 - Base station presence is now staleness-based",
+  "releaseNotes": "v1.7.1 - Signal strength (WiFi/RF) shown as Good/Average/Poor bands instead of raw values, and moved onto the last (Battery) row in the Summary tiles and Additional device attributes now available \n v1.7.2 - Base station presence is now staleness-based",
   "communityLink": "https://community.hubitat.com/t/re-release-netatmo-connect-weather-station/97788",
   "apps": [
     {
