@@ -3,7 +3,7 @@
   "author": "Derek Osborn",
   "version": "1.7.2",
   "minimumHEVersion": "2.4.0",
-  "dateReleased": "2024-10-01",
+  "dateReleased": "2026-06-19",
   "releaseNotes": "v1.7.2 - Base station presence is now staleness-based, with a configurable offline threshold (default 30 min) and a new dataAge attribute\nv1.7.1 - Signal strength (WiFi/RF) shown as Good/Average/Poor bands and moved onto the last (Battery) row in the Summary tiles; additional device attributes now available (presence, firmware, last_seen, wifi_status/rf_status, battery_vp, AbsolutePressure, max_wind_angle)",
   "communityLink": "https://community.hubitat.com/t/re-release-netatmo-connect-weather-station/97788",
   "apps": [
