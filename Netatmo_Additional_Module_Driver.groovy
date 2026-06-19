@@ -9,7 +9,7 @@
  *
  */
 
-def version() { return "v1.7.1" }
+def version() { return "v1.7.2" }
 
 metadata {
 	definition (name: "Netatmo Additional Module", namespace: "dJOS", author: "Derek Osborn", importUrl: "https://raw.githubusercontent.com/dJOS1475/Hubitat_Netatmo/refs/heads/main/Netatmo_Additional_Module_Driver.groovy") {

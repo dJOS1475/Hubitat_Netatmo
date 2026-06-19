@@ -7,6 +7,7 @@
  *
  *  Last Update 06/19/2026
  *
+ *	v1.7.2 - Base station presence is now staleness-based: flips to "not present" when no new data has been received for longer than the configurable "Base Station Offline Threshold" (default 30 min). Also added a numeric dataAge attribute (minutes since last Netatmo update)
  *	v1.7.1 - Signal strength (WiFi/RF) shown as Good/Average/Poor bands instead of raw values, and moved onto the last (Battery) row in the Summary tiles
  *	       - Overview tile no longer prints "null" for Outdoor/Wind/Rain when the base station has no such module feeding it (lines are now omitted when data is absent)
  *	       - Additional device attributes now available: presence (online/offline), firmware and last_seen (all devices); wifi_status (base); rf_status and battery_vp (modules); AbsolutePressure (base); max_wind_angle (wind)
@@ -33,7 +34,7 @@
  * 
  */
 
-def version() { return "v1.7.1" }
+def version() { return "v1.7.2" }
 
 import groovy.json.JsonSlurper
 
@@ -551,6 +552,7 @@ def listDevices() {
 			input "windUnits", "enum", title: "Wind Units", description: "Please select wind units", required: true, options: [kph:'kph', ms:'ms', mph:'mph', kts:'kts']
 			input "time", "enum", title: "Time Format", description: "Please select time format", required: true, options: [12:'12 Hour', 24:'24 Hour']
 			input "pollInterval", "enum", title: "Polling Interval", description: "How often to poll Netatmo (data updates ~every 10 min)", required: true, defaultValue: "5", options: [5:'5 Minutes', 10:'10 Minutes', 15:'15 Minutes']
+			input "offlineThreshold", "number", title: "Base Station Offline Threshold (minutes)", description: "Mark the base station 'not present' if no new data has been received for this many minutes", required: true, defaultValue: 30
 			input "sound", "number", title: "Sound Sensor: \nEnter the dB value above which sound is marked as detected (typical quiet home is ~40-50 dB)", description: "Please enter number", required: false, defaultValue: 50
 			paragraph ""
 			input("reverseWindAngle", "bool", title:"Use Reverse wind angle (Netatmo display method - angle point to source of wind)).",defaultValue:false, required:true)
@@ -623,7 +625,15 @@ def poll() {
 				try { child?.sendEvent(name: 'date_min_temp', value: lastUpdated(data['date_min_temp']), unit: "") } catch (e){}
 				try { child?.sendEvent(name: 'date_max_temp', value: lastUpdated(data['date_max_temp']), unit: "") } catch (e){}
 				try { child?.sendEvent(name: 'AbsolutePressure', value: (pressToPref(data['AbsolutePressure'])).toDouble().trunc(2), unit: settings.pressUnits) } catch (e){}
-				try { child?.sendEvent(name: 'presence', value: (detail['reachable']) ? "present" : "not present") } catch (e){}
+				// Base station presence is staleness-based: if Netatmo has no fresh data (time_utc older than the
+				// configured threshold) the station is treated as offline. More reliable than 'reachable', which goes
+				// stale rather than false when the base drops off the network.
+				try {
+					def thresholdMin = (settings.offlineThreshold != null) ? settings.offlineThreshold : 30
+					def ageMin = (now() - (data['time_utc'].toLong() * 1000L)) / 60000L
+					child?.sendEvent(name: 'presence', value: (ageMin <= thresholdMin) ? "present" : "not present")
+					child?.sendEvent(name: 'dataAge', value: ageMin, unit: "min")
+				} catch (e){ log_debug(e) }
 				try { child?.sendEvent(name: 'wifi_status', value: detail['wifi_status'], unit: "") } catch (e){}
 				try { child?.sendEvent(name: 'firmware', value: detail['firmware'], unit: "") } catch (e){}
 				try { child?.sendEvent(name: 'last_seen', value: lastUpdated(detail['last_status_store']), unit: "") } catch (e){}
