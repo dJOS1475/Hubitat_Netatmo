@@ -8,6 +8,8 @@
  *  Last Update 07/11/2026
  *
  *	v1.7.3 - Bug fix: a module that reports no data (offline, flat battery, or a favourited station) no longer throws a NullPointerException that aborts the entire poll. The combined-tile cross-feed now checks that a module actually has data before reading from it, so the remaining devices keep updating
+ *	       - Bug fix: refreshToken() never returned true, so the retry-after-token-refresh path in apiGet() was dead code and never ran. It now returns true, rebuilds the query with the new token (the retry previously re-sent the expired one), and is wrapped in its own try/catch
+ *	       - Token refresh is now only attempted on 401/403 auth failures. Transient problems (DNS, 500, 503) are logged as warnings and left for the next scheduled poll instead of triggering a pointless refresh and immediate retry
  *	v1.7.2 - Base station presence is now staleness-based: flips to "not present" when no new data has been received for longer than the configurable "Base Station Offline Threshold" (default 30 min). Also added a numeric dataAge attribute (minutes since last Netatmo update)
  *	v1.7.1 - Signal strength (WiFi/RF) shown as Good/Average/Poor bands instead of raw values, and moved onto the last (Battery) row in the Summary tiles
  *	       - Overview tile no longer prints "null" for Outdoor/Wind/Rain when the base station has no such module feeding it (lines are now omitted when data is absent)
@@ -342,6 +344,9 @@ def refreshToken() {
 		return false
 	}
 	if(enableDebug == true){log.debug "refreshToken: completed"}
+	// Must return true explicitly: callers gate the retry on this result, and without it
+	// the method falls off the end returning null and the retry never runs.
+	return true
 }
 
 String toQueryString(Map m) {
@@ -572,6 +577,25 @@ def listDevices() {
 	}
 }
 
+// Extract the HTTP status code from a thrown exception. Handles both the production stack
+// (groovyx.net.http.HttpResponseException) and the newer Hubitat executor exception, falling
+// back to parsing the message text. Returns null when there is no status (eg. DNS failures).
+private httpStatusOf(e) {
+	try { if (e?.response?.status != null) { return e.response.status as Integer } } catch (ignored) {}
+	try { if (e?.statusCode != null) { return e.statusCode as Integer } } catch (ignored) {}
+	String s = e?.toString() ?: ""
+	int i = s.indexOf("status code: ")
+	if (i >= 0) {
+		String digits = ""
+		for (int j = i + 13; j < s.length(); j++) {
+			String c = s.substring(j, j + 1)
+			if (c >= "0" && c <= "9") { digits += c } else { break }
+		}
+		if (digits) { return digits as Integer }
+	}
+	return null
+}
+
 def apiGet(String path, Map query, Closure callback) {
 	if(now() >= state.tokenExpires) {
 		refreshToken();
@@ -590,13 +614,28 @@ def apiGet(String path, Map query, Closure callback) {
 			callback.call(response)
 		}
 	} catch (Exception e) {
-		// This is most likely due to an invalid token. Try to refresh it and try again.
-		log.error "Netatmo::apiGet: Call failed $e"
-		if(refreshToken()) {
-			if(enableDebug == true){log.debug "Netatmo::apiGet: Trying again after refreshing token"}
-			httpGet(params)	{ response ->
-				callback.call(response)
+		def status = httpStatusOf(e)
+		if (status == 401 || status == 403) {
+			// Auth failure: refresh the token and try once more.
+			log.error "Netatmo::apiGet: Call failed (${status}) $e"
+			if(refreshToken()) {
+				if(enableDebug == true){log.debug "Netatmo::apiGet: Trying again after refreshing token"}
+				// Rebuild the query so the retry carries the NEW token; params was built with the old one.
+				query['access_token'] = state.authToken
+				params.query = query
+				try {
+					httpGet(params)	{ response ->
+						callback.call(response)
+					}
+				} catch (Exception retryEx) {
+					log.error "Netatmo::apiGet: Retry after token refresh also failed: $retryEx"
+				}
 			}
+		} else {
+			// Transient network/server problems (DNS, 500, 503) are not auth issues - refreshing the
+			// token would not help and retrying immediately just hammers a struggling server.
+			// Let the next scheduled poll pick it up.
+			log.warn "Netatmo::apiGet: Call failed, will retry at the next poll: $e"
 		}
 	}
 }
