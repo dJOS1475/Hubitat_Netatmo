@@ -5,8 +5,9 @@
  *  Now Maintained by dJOS as of 2022
  *	  
  *
- *  Last Update 06/19/2026
+ *  Last Update 07/11/2026
  *
+ *	v1.7.3 - Bug fix: a module that reports no data (offline, flat battery, or a favourited station) no longer throws a NullPointerException that aborts the entire poll. The combined-tile cross-feed now checks that a module actually has data before reading from it, so the remaining devices keep updating
  *	v1.7.2 - Base station presence is now staleness-based: flips to "not present" when no new data has been received for longer than the configurable "Base Station Offline Threshold" (default 30 min). Also added a numeric dataAge attribute (minutes since last Netatmo update)
  *	v1.7.1 - Signal strength (WiFi/RF) shown as Good/Average/Poor bands instead of raw values, and moved onto the last (Battery) row in the Summary tiles
  *	       - Overview tile no longer prints "null" for Outdoor/Wind/Rain when the base station has no such module feeding it (lines are now omitted when data is absent)
@@ -34,7 +35,7 @@
  * 
  */
 
-def version() { return "v1.7.2" }
+def version() { return "v1.7.3" }
 
 import groovy.json.JsonSlurper
 
@@ -482,27 +483,36 @@ def getDeviceList() {
 				if (value2.type == "NAModule2") { windID = key2 }
 				if (value2.type == "NAModule3") { rainID = key2 }
 			}
-			if ( (outdoorID != null) && (windID != null) ) {
-				state.deviceState[outdoorID] << ["WindAngle" : state.deviceState[windID].WindAngle]
-				state.deviceState[outdoorID] << ["WindStrength" : state.deviceState[windID].WindStrength]
-				state.deviceState[outdoorID] << ["GustAngle" : state.deviceState[windID].GustAngle]
-				state.deviceState[outdoorID] << ["GustStrength" : state.deviceState[windID].GustStrength]
+			// Cross-feed readings between modules for the combined dashboard tiles.
+			// Guard on the DATA, not just the module id: a module that exists but has not reported
+			// (offline, flat battery, or a favourited station) returns no dashboard_data, so its
+			// deviceState entry is null. Reading from it would throw and abort the whole poll.
+			def outdoorData = (outdoorID != null) ? state.deviceState[outdoorID] : null
+			def windData    = (windID    != null) ? state.deviceState[windID]    : null
+			def rainData    = (rainID    != null) ? state.deviceState[rainID]    : null
+			def mainData    = (mainID    != null) ? state.deviceState[mainID]    : null
+
+			if ( (outdoorData != null) && (windData != null) ) {
+				outdoorData << ["WindAngle" : windData.WindAngle]
+				outdoorData << ["WindStrength" : windData.WindStrength]
+				outdoorData << ["GustAngle" : windData.GustAngle]
+				outdoorData << ["GustStrength" : windData.GustStrength]
 			}
-			if (mainID != null) {
-				if (rainID != null) {
-					state.deviceState[mainID] << ["Rain" : state.deviceState[rainID].Rain]
-					state.deviceState[mainID] << ["sum_rain_1" : state.deviceState[rainID].sum_rain_1]
-					state.deviceState[mainID] << ["sum_rain_24" : state.deviceState[rainID].sum_rain_24]
+			if (mainData != null) {
+				if (rainData != null) {
+					mainData << ["Rain" : rainData.Rain]
+					mainData << ["sum_rain_1" : rainData.sum_rain_1]
+					mainData << ["sum_rain_24" : rainData.sum_rain_24]
 				}
-				if (outdoorID != null) {
-					state.deviceState[mainID] << ["TemperatureOutdoor" : state.deviceState[outdoorID].Temperature]
-					state.deviceState[mainID] << ["HumidityOutdoor" : state.deviceState[outdoorID].Humidity]
+				if (outdoorData != null) {
+					mainData << ["TemperatureOutdoor" : outdoorData.Temperature]
+					mainData << ["HumidityOutdoor" : outdoorData.Humidity]
 				}
-				if (windID != null) {
-					state.deviceState[mainID] << ["WindAngle" : state.deviceState[windID].WindAngle]
-					state.deviceState[mainID] << ["WindStrength" : state.deviceState[windID].WindStrength]
-					state.deviceState[mainID] << ["GustAngle" : state.deviceState[windID].GustAngle]
-					state.deviceState[mainID] << ["GustStrength" : state.deviceState[windID].GustStrength]
+				if (windData != null) {
+					mainData << ["WindAngle" : windData.WindAngle]
+					mainData << ["WindStrength" : windData.WindStrength]
+					mainData << ["GustAngle" : windData.GustAngle]
+					mainData << ["GustStrength" : windData.GustStrength]
 				}
 			}
 		}
